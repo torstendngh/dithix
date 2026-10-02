@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-regular-sans);
+  --font-mono: var(--font-regular-mono);
+}
+
+body {
+  font-family: var(--font-regular-sans), Arial, Helvetica, sans-serif;
+}
