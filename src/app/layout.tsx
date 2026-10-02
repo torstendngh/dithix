@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { cn } from "@/lib/tailwind-utils";
 import fonts from "@/lib/fonts";
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
   title: "dithix",
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="en" className={cn(fonts, "dark h-full antialiased")}>
       <body className="flex h-full min-h-full flex-col overflow-hidden font-mono text-xs">
         {children}
+        <Analytics/>
       </body>
     </html>
   );
