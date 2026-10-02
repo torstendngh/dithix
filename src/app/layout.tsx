@@ -5,7 +5,7 @@ import fonts from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: "dithix",
-  description: "dithix - created with create-genesis",
+  description: "dithix — image dithering in the browser",
 };
 
 export default function RootLayout({
@@ -14,8 +14,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn(fonts, "h-full antialiased")}>
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={cn(fonts, "dark h-full antialiased")}>
+      <body className="flex h-full min-h-full flex-col overflow-hidden font-mono text-xs">
+        {children}
+      </body>
     </html>
   );
 }

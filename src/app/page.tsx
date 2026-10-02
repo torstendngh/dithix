@@ -1,11 +1,7 @@
-interface PageProps {}
+import { EditorLoader } from "@/components/editor/editor-loader";
 
-const Page = ({}: PageProps) => {
-  return (
-    <div className="">
-      <h1>Hello World!</h1>
-    </div>
-  );
+const Page = () => {
+  return <EditorLoader />;
 };
 
 export default Page;

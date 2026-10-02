@@ -1,0 +1,144 @@
+/** Minimal ImageData-compatible shape so the engine runs outside the DOM (worker, tests). */
+export interface PixelBuffer {
+  width: number;
+  height: number;
+  data: Uint8ClampedArray;
+}
+
+export type RGB = [number, number, number];
+
+export type ResizeMode = "scale" | "width" | "height";
+
+/**
+ * "area" averages every covered source pixel (smooth), "bilinear" samples 2×2 neighbours (sharper),
+ * "canvas" lets the browser's `drawImage` resize (matches web tools that do the same).
+ */
+export type ResizeFilter = "area" | "bilinear" | "canvas";
+
+export interface ResizeSettings {
+  mode: ResizeMode;
+  /** Percent of the source size, 1–100. */
+  scale: number;
+  width: number;
+  height: number;
+  filter: ResizeFilter;
+}
+
+export interface CurvePoint {
+  x: number;
+  y: number;
+}
+
+export type CurveChannel = "master" | "r" | "g" | "b";
+
+export type Curves = Record<CurveChannel, CurvePoint[]>;
+
+export interface AdjustSettings {
+  /** -100..100 */
+  brightness: number;
+  /** -100..100 */
+  contrast: number;
+  /** 0.1..3, 1 = neutral */
+  gamma: number;
+  /** -100..100, -100 = grayscale */
+  saturation: number;
+  invert: boolean;
+  curves: Curves;
+}
+
+export type ColorDistance = "rgb" | "redmean" | "luma";
+
+export interface PaletteSettings {
+  /** Preset palette id or null once edited by hand. */
+  presetId: string | null;
+  colors: string[];
+  distance: ColorDistance;
+}
+
+export type AlgorithmKind = "threshold" | "ordered" | "diffusion" | "curve";
+
+export type AlgorithmId =
+  | "threshold"
+  | "bayer2"
+  | "bayer4"
+  | "bayer8"
+  | "bayer16"
+  | "bayer32"
+  | "cluster4"
+  | "cluster8"
+  | "halftone"
+  | "lines-h"
+  | "lines-v"
+  | "lines-d"
+  | "blue-noise"
+  | "ign"
+  | "white-noise"
+  | "floyd-steinberg"
+  | "false-floyd-steinberg"
+  | "jarvis-judice-ninke"
+  | "stucki"
+  | "burkes"
+  | "sierra3"
+  | "sierra2"
+  | "sierra-lite"
+  | "atkinson"
+  | "riemersma";
+
+export type SpreadMode = "auto" | "fixed";
+
+export interface DitherOptions {
+  algorithm: AlgorithmId;
+  /** Ordered (auto spread): multiplier 0..2. Diffusion: fraction of error carried 0..1. */
+  strength: number;
+  /** Ordered: "auto" derives the threshold range from palette spacing, "fixed" uses `spread`. */
+  spreadMode: SpreadMode;
+  /** Ordered, fixed mode: threshold range in 0..255 channel units. */
+  spread: number;
+  /** Ordered: shifts thresholds by a fraction of the spread, -1..1. 0 = centred, 0.5 = additive only. */
+  bias: number;
+  /** Ordered: flip the threshold map across its diagonal. */
+  transpose: boolean;
+  serpentine: boolean;
+  seed: number;
+}
+
+export type GradientDirection = "right" | "left" | "down" | "up" | "radial";
+
+/**
+ * Glitch gradient: dot size grows in bands along a direction, optionally dissolving from the
+ * undithered image into the dither. Sizes are in output pixels (the resize settings set the grid).
+ */
+export interface GradientSettings {
+  enabled: boolean;
+  direction: GradientDirection;
+  startSize: number;
+  endSize: number;
+  /** Number of size steps, 2..24. */
+  bands: number;
+  /** Where the transition runs along the direction, 0..1. */
+  from: number;
+  to: number;
+  /** Start from the undithered image and dissolve into the dither. */
+  fadeIn: boolean;
+  /** Random jitter of each dot's position along the gradient, 0..1 of its length. Hides band edges. */
+  scatter: number;
+  seed: number;
+}
+
+export interface DitherSettings {
+  resize: ResizeSettings;
+  adjust: AdjustSettings;
+  dither: DitherOptions;
+  palette: PaletteSettings;
+  gradient: GradientSettings;
+}
+
+export type ExportFormat = "png" | "jpg" | "svg";
+
+export interface ExportSettings {
+  format: ExportFormat;
+  /** Integer nearest-neighbour upscale applied to the dithered image. */
+  scale: number;
+  /** JPG quality 0..1 */
+  quality: number;
+}

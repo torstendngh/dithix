@@ -6,25 +6,35 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@base-ui/react": "latest",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "immer": "^11.1.18",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "clsx": "latest",
     "tailwind-merge": "latest",
-    "@base-ui/react": "latest",
-    "class-variance-authority": "latest"
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "latest",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "^6.1.1",
     "eslint": "latest",
     "eslint-config-next": "latest",
+    "jsdom": "^30.1.1",
     "tailwindcss": "latest",
-    "typescript": "latest"
+    "typescript": "latest",
+    "vitest": "^5.0.3"
   }
 }

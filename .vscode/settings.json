@@ -1,0 +1,17 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.jj": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "node_modules": true,
+        "out": true,
+        ".claude": true,
+        ".next": true,
+        "**/_generated": true,
+        ".vscode": true,
+        ".agents": true
+    }
+}

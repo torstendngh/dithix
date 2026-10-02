@@ -1,10 +1,100 @@
 @import "tailwindcss";
 
-@theme inline {
-  --font-sans: var(--font-regular-sans);
-  --font-mono: var(--font-regular-mono);
+@custom-variant dark (&:is(.dark *));
+
+/* Zinc dark theme, square corners everywhere. */
+:root {
+  --radius: 0px;
+  --background: var(--color-zinc-950);
+  --foreground: var(--color-zinc-100);
+  --card: var(--color-zinc-950);
+  --card-foreground: var(--color-zinc-100);
+  --popover: var(--color-zinc-900);
+  --popover-foreground: var(--color-zinc-100);
+  --primary: var(--color-zinc-100);
+  --primary-foreground: var(--color-zinc-950);
+  --secondary: var(--color-zinc-800);
+  --secondary-foreground: var(--color-zinc-100);
+  --muted: var(--color-zinc-900);
+  --muted-foreground: var(--color-zinc-500);
+  --accent: var(--color-zinc-800);
+  --accent-foreground: var(--color-zinc-50);
+  --destructive: var(--color-red-500);
+  --border: var(--color-zinc-800);
+  --input: var(--color-zinc-800);
+  --ring: var(--color-zinc-400);
+  color-scheme: dark;
 }
 
-body {
-  font-family: var(--font-regular-sans), Arial, Helvetica, sans-serif;
+@theme inline {
+  --font-sans: var(--font-regular-mono);
+  --font-mono: var(--font-regular-mono);
+
+  /* Type scale, 2px up from Tailwind's defaults for the pixel font. */
+  --text-2xs: 12px; /* captions, labels, tooltips */
+  --text-2xs--line-height: 16px;
+  --text-xs: 14px; /* UI default */
+  --text-xs--line-height: 20px;
+  --text-sm: 16px;
+  --text-sm--line-height: 22px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    @apply bg-background text-foreground;
+  }
+  body {
+    font-family: var(--font-regular-mono), ui-monospace, monospace;
+  }
+  ::selection {
+    @apply bg-zinc-100 text-zinc-950;
+  }
+}
+
+/* Thin square scrollbars to match the theme. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-zinc-800) transparent;
+  overscroll-behavior: none;
+}
+
+.checkerboard {
+  background-color: var(--color-zinc-900);
+  background-image:
+    linear-gradient(45deg, var(--color-zinc-950) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-zinc-950) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-zinc-950) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-zinc-950) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
 }
