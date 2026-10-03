@@ -4,7 +4,21 @@ import { mergeDefaults } from "../merge-defaults";
 import { BACKGROUND_MODES, defaultPattern, normalizePattern } from "./background";
 import { GLITCH_GRADIENT, normalizeFilters } from "./filters";
 import { gradientParams } from "./gradient";
-import type { DitherSettings, ExportSettings, GradientSettings } from "./types";
+import type { DitherSettings, ExportSettings, GradientSettings, MotionSettings } from "./types";
+
+export function defaultMotion(): MotionSettings {
+  return {
+    enabled: false,
+    duration: 2,
+    fps: 12,
+    crawl: 1,
+    crawlDirection: "right",
+    hueTurns: 0,
+    pulse: 0,
+    boil: 0,
+    animateFilters: true,
+  };
+}
 
 /** Neutral starting point; built-in presets are defined as changes on top of this. */
 export function baseSettings(): DitherSettings {
@@ -32,6 +46,7 @@ export function baseSettings(): DitherSettings {
     palette: { presetId: "zinc", colors: [...getPalettePreset("zinc")!.colors], distance: "rgb" },
     filters: [],
     background: { enabled: false, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8, pattern: defaultPattern() },
+    motion: defaultMotion(),
   };
 }
 
@@ -72,6 +87,7 @@ const OFFICIAL: DitherSettings = {
   },
   filters: [],
   background: { enabled: false, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8, pattern: defaultPattern() },
+  motion: defaultMotion(),
 };
 
 export function officialSettings(): DitherSettings {

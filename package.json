@@ -17,6 +17,7 @@
     "class-variance-authority": "latest",
     "clsx": "latest",
     "immer": "^11.1.18",
+    "mediabunny": "^1.61.0",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",

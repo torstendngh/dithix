@@ -5,6 +5,7 @@ import { PixelIcon } from "@/components/icons/pixel-icon";
 import { Button } from "@/components/shared/button";
 import { cn } from "@/lib/tailwind-utils";
 import { wheelZoomFactor } from "@/lib/viewport-math";
+import { useSettingsStore } from "@/stores/settings-store";
 import { currentView, useWorkspaceStore } from "@/stores/workspace-store";
 import { openImage, openSample, pickImage } from "./actions";
 import { IconButton } from "./fields";
@@ -32,6 +33,31 @@ function EmptyState() {
   );
 }
 
+/** Play/pause for the motion loop, with render progress while frames are still coming in. */
+function PlaybackControl() {
+  const playing = useWorkspaceStore((s) => s.playing);
+  const setPlaying = useWorkspaceStore((s) => s.setPlaying);
+  const done = useWorkspaceStore((s) => s.frames.length);
+  const total = useWorkspaceStore((s) => s.frameTotal);
+  const rendering = total > 0 && done < total;
+  return (
+    <>
+      <IconButton
+        icon={playing ? "pause" : "play"}
+        label={playing ? "Pause animation" : "Play animation"}
+        aria-pressed={playing}
+        onClick={() => setPlaying(!playing)}
+      />
+      {rendering && (
+        <span className="px-1.5 text-2xs text-zinc-500 tabular-nums" title="Rendering animation frames">
+          {done}/{total}
+        </span>
+      )}
+      <span className="h-4 w-px bg-zinc-800" />
+    </>
+  );
+}
+
 function ZoomControls({ zoom }: { zoom: number }) {
   const fit = useWorkspaceStore((s) => s.fit);
   const fitView = useWorkspaceStore((s) => s.fitView);
@@ -39,9 +65,11 @@ function ZoomControls({ zoom }: { zoom: number }) {
   const stepZoom = useWorkspaceStore((s) => s.stepZoom);
   const compare = useWorkspaceStore((s) => s.compare);
   const setCompare = useWorkspaceStore((s) => s.setCompare);
+  const motion = useSettingsStore((s) => s.settings.motion.enabled);
 
   return (
     <div className="absolute right-3 bottom-3 flex items-center border border-zinc-800 bg-zinc-950/90 backdrop-blur">
+      {motion && <PlaybackControl />}
       <IconButton
         icon="eye"
         label="Hold to compare with original (Space)"
@@ -149,6 +177,12 @@ export function Viewport() {
   const viewport = useWorkspaceStore((s) => s.viewport);
   const setViewport = useWorkspaceStore((s) => s.setViewport);
   const view = currentView({ fit, view: storedView, viewport, result });
+  const frames = useWorkspaceStore((s) => s.frames);
+  const frameTotal = useWorkspaceStore((s) => s.frameTotal);
+  const playing = useWorkspaceStore((s) => s.playing);
+  const motion = useSettingsStore((s) => s.settings.motion);
+  // Play once the whole loop is in; until then (and while comparing) show the still.
+  const loop = motion.enabled && playing && !compare && frameTotal > 0 && frames.length === frameTotal ? frames : null;
 
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -181,6 +215,36 @@ export function Viewport() {
       ctx.putImageData(result, 0, 0);
     }
   }, [result, compare, source]);
+
+  // Motion loop playback, timed by the clock so it keeps its speed whatever the display rate.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !loop) return;
+    canvas.width = loop[0].width;
+    canvas.height = loop[0].height;
+    const ctx = canvas.getContext("2d")!;
+    const start = performance.now();
+    let shown = -1;
+    let raf = 0;
+    const tick = (now: number) => {
+      const i = Math.floor(((now - start) / 1000) * motion.fps) % loop.length;
+      if (i !== shown) {
+        ctx.putImageData(loop[i], 0, 0);
+        shown = i;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      // Back to the still when playback stops.
+      if (result) {
+        canvas.width = result.width;
+        canvas.height = result.height;
+        ctx.putImageData(result, 0, 0);
+      }
+    };
+  }, [loop, motion.fps, result]);
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();

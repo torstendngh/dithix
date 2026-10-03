@@ -32,6 +32,15 @@ interface WorkspaceState {
   error: string | null;
   compare: boolean;
 
+  /** Rendered motion loop frames, in order; complete when `frames.length === frameTotal`. */
+  frames: ImageData[];
+  /** Frames in the loop being rendered, 0 when motion is off. */
+  frameTotal: number;
+  /** Whether the viewport plays the loop (when complete) instead of the still. */
+  playing: boolean;
+  /** An export is being encoded. */
+  exporting: boolean;
+
   /** While true the image is fitted to the viewport and `view` is ignored. */
   fit: boolean;
   view: View;
@@ -42,6 +51,11 @@ interface WorkspaceState {
   setProcessing: (processing: boolean) => void;
   setError: (error: string | null) => void;
   setCompare: (compare: boolean) => void;
+  /** Starts collecting a new loop of `total` frames (0 clears it). */
+  resetFrames: (total: number) => void;
+  addFrame: (index: number, frame: ImageData) => void;
+  setPlaying: (playing: boolean) => void;
+  setExporting: (exporting: boolean) => void;
 
   setViewport: (size: Size) => void;
   fitView: () => void;
@@ -79,6 +93,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       duration: 0,
       error: null,
       compare: false,
+      frames: [],
+      frameTotal: 0,
+      playing: true,
+      exporting: false,
       fit: true,
       view: { zoom: 1, x: 0, y: 0 },
       viewport: { width: 0, height: 0 },
@@ -90,6 +108,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           s.result = null;
           s.error = null;
           s.fit = true;
+          s.frames = [];
+          s.frameTotal = 0;
         }),
       setResult: (result, duration) =>
         set((s) => {
@@ -110,6 +130,24 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setCompare: (compare) =>
         set((s) => {
           s.compare = compare;
+        }),
+      resetFrames: (total) =>
+        set((s) => {
+          s.frames = [];
+          s.frameTotal = total;
+        }),
+      addFrame: (index, frame) =>
+        set((s) => {
+          // Frames arrive in order; anything else belongs to a superseded loop.
+          if (index === s.frames.length && index < s.frameTotal) s.frames.push(frame);
+        }),
+      setPlaying: (playing) =>
+        set((s) => {
+          s.playing = playing;
+        }),
+      setExporting: (exporting) =>
+        set((s) => {
+          s.exporting = exporting;
         }),
 
       setViewport: (size) =>

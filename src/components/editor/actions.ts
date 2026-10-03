@@ -1,6 +1,14 @@
 "use client";
 
-import { createSampleImage, downloadBlob, exportFileName, loadImage, renderExport } from "@/lib/image-io";
+import {
+  ANIMATED_FORMATS,
+  createSampleImage,
+  downloadBlob,
+  exportFileName,
+  loadImage,
+  renderAnimation,
+  renderExport,
+} from "@/lib/image-io";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
@@ -29,14 +37,33 @@ export function pickImage() {
   input.click();
 }
 
+/** True while an export is being encoded (MP4 and big GIFs take a moment). */
+let exporting = false;
+
 export async function exportResult() {
-  const { result, source } = useWorkspaceStore.getState();
-  if (!result || !source) return;
+  const { result, source, frames, frameTotal } = useWorkspaceStore.getState();
+  if (!result || !source || exporting) return;
   const { exportSettings, settings } = useSettingsStore.getState();
+  const background = settings.palette.colors[0] ?? "#000000";
+  const animated = settings.motion.enabled && ANIMATED_FORMATS.includes(exportSettings.format);
   try {
-    const blob = await renderExport(result, exportSettings, settings.palette.colors[0] ?? "#000000");
+    exporting = true;
+    useWorkspaceStore.getState().setExporting(true);
+    let blob: Blob;
+    if (animated) {
+      if (frameTotal === 0 || frames.length < frameTotal) throw new Error("The animation is still rendering — try again in a moment");
+      blob = await renderAnimation(frames, settings.motion.fps, exportSettings, background);
+    } else {
+      if (exportSettings.format === "gif" || exportSettings.format === "mp4") {
+        throw new Error(`Turn on Motion to export ${exportSettings.format.toUpperCase()}`);
+      }
+      blob = await renderExport(result, exportSettings, background);
+    }
     downloadBlob(blob, exportFileName(source.name, exportSettings.format));
   } catch (err) {
     useWorkspaceStore.getState().setError(err instanceof Error ? err.message : "Export failed");
+  } finally {
+    exporting = false;
+    useWorkspaceStore.getState().setExporting(false);
   }
 }

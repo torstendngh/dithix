@@ -15,6 +15,7 @@ import type {
   DitherSettings,
   BackgroundSettings,
   ExportSettings,
+  MotionSettings,
   ResizeSettings,
 } from "@/lib/dither/types";
 import { mergeDefaults } from "@/lib/merge-defaults";
@@ -38,6 +39,7 @@ interface SettingsState {
   setFilterParam: (id: string, key: string, value: number) => void;
   clearFilters: () => void;
   setBackground: (patch: Partial<BackgroundSettings>) => void;
+  setMotion: (patch: Partial<MotionSettings>) => void;
   setPalettePreset: (id: string) => void;
   setPaletteColors: (colors: string[]) => void;
   setPaletteColor: (index: number, hex: string) => void;
@@ -117,6 +119,10 @@ export const useSettingsStore = create<SettingsState>()(
       setBackground: (patch) =>
         set((s) => {
           Object.assign(s.settings.background, patch);
+        }),
+      setMotion: (patch) =>
+        set((s) => {
+          Object.assign(s.settings.motion, patch);
         }),
       setPalettePreset: (id) =>
         set((s) => {

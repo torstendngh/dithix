@@ -149,7 +149,12 @@ function ditherOrdered(src: PixelBuffer, opts: DitherOptions, matcher: PaletteMa
   const out = blankOutput(src);
   const { width, height, data } = src;
   const base = opts.algorithm === "threshold" ? null : thresholdFunction(opts.algorithm, opts.seed);
-  const threshold = base && opts.transpose ? (x: number, y: number) => base(y, x) : base;
+  const oriented = base && opts.transpose ? (x: number, y: number) => base(y, x) : base;
+  // Motion's pattern crawl slides the pattern on screen (non-negative offsets keep the matrix
+  // modulo valid), applied after transposing so the direction matches what you picked.
+  const ox = opts.offsetX ?? 0;
+  const oy = opts.offsetY ?? 0;
+  const threshold = oriented && (ox || oy) ? (x: number, y: number) => oriented(x + ox, y + oy) : oriented;
   const spread = opts.spreadMode === "fixed" ? opts.spread : matcher.autoSpread() * opts.strength;
   const shift = opts.bias - 0.5;
   for (let y = 0; y < height; y++) {

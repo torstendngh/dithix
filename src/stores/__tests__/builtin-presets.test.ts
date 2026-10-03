@@ -86,6 +86,11 @@ describe("official dithix preset", () => {
       // Bayer 4×4 at 50% is a checkerboard.
       pattern: { size: 4, cells: "1010010110100101", scale: 1 },
     },
+    // Added later still; off, so the preset doesn't animate.
+    motion: {
+      enabled: false, duration: 2, fps: 12, crawl: 1, crawlDirection: "right",
+      hueTurns: 0, pulse: 0, boil: 0, animateFilters: true,
+    },
   };
 
   const official = () => BUILTIN_PRESETS.find((p) => p.name === "dithix")!;

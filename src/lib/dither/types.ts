@@ -102,6 +102,12 @@ export interface DitherOptions {
   transpose: boolean;
   serpentine: boolean;
   seed: number;
+  /**
+   * Ordered: shifts the threshold pattern by this many pixels. Set per frame by motion's pattern
+   * crawl and never stored, so it is not part of the defaults.
+   */
+  offsetX?: number;
+  offsetY?: number;
 }
 
 export type GradientDirection = "right" | "left" | "down" | "up" | "radial";
@@ -159,6 +165,30 @@ export interface BackgroundSettings {
   pattern: BackgroundPattern;
 }
 
+export type CrawlDirection = "right" | "left" | "down" | "up";
+
+/**
+ * Looping animation. Every effect is a function of the loop position t ∈ [0, 1) that returns to
+ * its start at t = 1, so the last frame flows into the first.
+ */
+export interface MotionSettings {
+  enabled: boolean;
+  /** Loop length in seconds. */
+  duration: number;
+  fps: number;
+  /** Pattern crawl: ordered-dither pattern movement in pixels per frame, 0 = still. */
+  crawl: number;
+  crawlDirection: CrawlDirection;
+  /** Whole turns of the hue wheel per loop, negative = backwards. */
+  hueTurns: number;
+  /** Brightness pulse amplitude, 0..60 (brightness units). */
+  pulse: number;
+  /** Re-roll noise and glitch seeds every this many frames; 0 = off. */
+  boil: number;
+  /** Advance filter phases (wave, swirl, RGB split, TV glitch band…) over the loop. */
+  animateFilters: boolean;
+}
+
 export interface DitherSettings {
   resize: ResizeSettings;
   adjust: AdjustSettings;
@@ -167,9 +197,11 @@ export interface DitherSettings {
   /** Applied in order after adjustments and background, before dithering. */
   filters: FilterInstance[];
   background: BackgroundSettings;
+  motion: MotionSettings;
 }
 
-export type ExportFormat = "png" | "jpg" | "svg";
+/** "gif" and "mp4" export the motion loop; "svg" is animated while motion is on. */
+export type ExportFormat = "png" | "jpg" | "svg" | "gif" | "mp4";
 
 export interface ExportSettings {
   format: ExportFormat;

@@ -18,11 +18,8 @@ export function upscaleNearest(src: PixelBuffer, factor: number): PixelBuffer {
   return { width, height, data: out };
 }
 
-/**
- * Vector export: one <path> per colour, built from horizontal runs so the file stays small.
- * Transparent pixels are left out.
- */
-export function toSvg(src: PixelBuffer, scale = 1): string {
+/** One <path> per colour, built from horizontal runs so the file stays small. Transparent pixels are left out. */
+function svgPaths(src: PixelBuffer): string {
   const { width, height, data } = src;
   const paths = new Map<string, string[]>();
   for (let y = 0; y < height; y++) {
@@ -49,12 +46,36 @@ export function toSvg(src: PixelBuffer, scale = 1): string {
       x = end;
     }
   }
-  const body = [...paths]
-    .map(([fill, d]) => `<path fill="${fill}" d="${d.join("")}"/>`)
-    .join("\n");
+  return [...paths].map(([fill, d]) => `<path fill="${fill}" d="${d.join("")}"/>`).join("\n");
+}
+
+const svgOpen = (width: number, height: number, scale: number) => {
   const s = Math.max(1, scale);
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width * s}" height="${height * s}" ` +
-    `viewBox="0 0 ${width} ${height}" shape-rendering="crispEdges">\n${body}\n</svg>\n`
+    `viewBox="0 0 ${width} ${height}" shape-rendering="crispEdges">\n`
   );
+};
+
+/** Vector export of a single image. */
+export function toSvg(src: PixelBuffer, scale = 1): string {
+  return `${svgOpen(src.width, src.height, scale)}${svgPaths(src)}\n</svg>\n`;
+}
+
+/**
+ * Looping vector animation: one group per frame, shown in turn by a CSS animation. Each group is
+ * visible for the first 1/n of a shared keyframe cycle and offset by its frame's delay, so exactly
+ * one frame shows at a time and the loop repeats forever.
+ */
+export function toAnimatedSvg(frames: PixelBuffer[], fps: number, scale = 1): string {
+  const n = frames.length;
+  const total = n / fps;
+  const share = (100 / n).toFixed(4);
+  const style =
+    `<style>g{visibility:hidden;animation:f ${total.toFixed(4)}s step-end infinite}` +
+    `@keyframes f{0%{visibility:visible}${share}%{visibility:hidden}}</style>`;
+  const groups = frames
+    .map((f, i) => `<g style="animation-delay:${((i / n) * total).toFixed(4)}s">\n${svgPaths(f)}\n</g>`)
+    .join("\n");
+  return `${svgOpen(frames[0].width, frames[0].height, scale)}${style}\n${groups}\n</svg>\n`;
 }

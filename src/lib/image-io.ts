@@ -1,4 +1,5 @@
-import { upscaleNearest, toSvg } from "@/lib/dither/export";
+import { toAnimatedSvg, upscaleNearest, toSvg } from "@/lib/dither/export";
+import { encodeGif } from "@/lib/gif";
 import type { ExportSettings, PixelBuffer } from "@/lib/dither/types";
 import type { SourceImage } from "@/stores/workspace-store";
 
@@ -122,6 +123,35 @@ export async function renderExport(
       settings.quality,
     ),
   );
+}
+
+/** Formats that export the motion loop rather than a still. */
+export const ANIMATED_FORMATS: ExportSettings["format"][] = ["gif", "mp4", "svg"];
+
+/**
+ * Exports the motion loop. GIF and SVG keep every palette colour exactly; MP4 is lossy, has no
+ * transparency (composited over `background`) and is upscaled at least 2× to keep pixels crisp.
+ */
+export async function renderAnimation(
+  frames: ImageData[],
+  fps: number,
+  settings: ExportSettings,
+  background: string,
+): Promise<Blob> {
+  const { width, height } = frames[0];
+  const scale = Math.min(settings.scale, maxExportScale(width, height));
+  if (settings.format === "svg") {
+    return new Blob([toAnimatedSvg(frames, fps, scale)], { type: "image/svg+xml" });
+  }
+  if (settings.format === "mp4") {
+    const { encodeMp4 } = await import("@/lib/video");
+    return encodeMp4(frames, fps, settings.scale, background);
+  }
+  if (settings.format === "gif") {
+    const bytes = encodeGif(frames.map((f) => upscaleNearest(f, scale)), fps);
+    return new Blob([bytes.buffer as ArrayBuffer], { type: "image/gif" });
+  }
+  throw new Error(`${settings.format.toUpperCase()} can't hold an animation`);
 }
 
 export function downloadBlob(blob: Blob, filename: string) {
