@@ -1,11 +1,51 @@
 import { prepareImage } from "./prepare";
 import { dither } from "./algorithms";
 import { PaletteMatcher, paletteRgb } from "./color";
+import { GLITCH_GRADIENT } from "./filters";
 import { bayerMatrix, cachedMatrix, hashNoise, matrixThreshold } from "./matrices";
-import type { DitherSettings, GradientSettings, PixelBuffer } from "./types";
+import type { DitherSettings, FilterInstance, GradientDirection, GradientSettings, PixelBuffer } from "./types";
 
 /** Returns the source resampled to the given size (callers may cache). */
 export type Resampler = (width: number, height: number) => PixelBuffer;
+
+/** Direction for each value of the glitch-gradient filter's `direction` param. */
+export const GRADIENT_DIRECTIONS: GradientDirection[] = ["right", "left", "down", "up", "radial"];
+
+/** Settings from a glitch-gradient filter's params. */
+export function gradientSettings(p: Record<string, number>): GradientSettings {
+  return {
+    direction: GRADIENT_DIRECTIONS[p.direction] ?? "right",
+    startSize: p.startSize,
+    endSize: p.endSize,
+    bands: p.bands,
+    from: p.from,
+    to: p.to,
+    fadeIn: p.fadeIn === 1,
+    scatter: p.scatter,
+    seed: p.seed,
+  };
+}
+
+/** Filter params for gradient settings (the inverse of `gradientSettings`). */
+export function gradientParams(g: GradientSettings): Record<string, number> {
+  return {
+    direction: Math.max(0, GRADIENT_DIRECTIONS.indexOf(g.direction)),
+    startSize: g.startSize,
+    endSize: g.endSize,
+    bands: g.bands,
+    from: g.from,
+    to: g.to,
+    fadeIn: g.fadeIn ? 1 : 0,
+    scatter: g.scatter,
+    seed: g.seed,
+  };
+}
+
+/** The gradient to render with, from the first enabled glitch-gradient filter, or null. */
+export function gradientFromFilters(filters: FilterInstance[]): GradientSettings | null {
+  const f = filters.find((x) => x.enabled && x.type === GLITCH_GRADIENT);
+  return f ? gradientSettings(f.params) : null;
+}
 
 /** Position along the gradient for a pixel, 0..1, after applying the from/to range. */
 export function gradientPosition(
@@ -115,8 +155,8 @@ export function ditherGradient(
   width: number,
   height: number,
   settings: Omit<DitherSettings, "resize">,
+  g: GradientSettings,
 ): PixelBuffer {
-  const g = settings.gradient;
   const sizes = bandSizes(g);
   const matcher = new PaletteMatcher(paletteRgb(settings.palette.colors), settings.palette.distance);
 

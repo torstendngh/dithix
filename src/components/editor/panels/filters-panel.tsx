@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { PixelIcon } from "@/components/icons/pixel-icon";
+import { PixelIcon, type IconName } from "@/components/icons/pixel-icon";
 import { PixelText } from "@/components/icons/pixel-text";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/shared/popover";
 import { Switch } from "@/components/shared/switch";
-import { FILTER_CATEGORIES, FILTERS, getFilter, MAX_FILTERS, type ParamDef } from "@/lib/dither/filters";
+import { FILTER_CATEGORIES, FILTERS, getFilter, GLITCH_GRADIENT, MAX_FILTERS, type ParamDef } from "@/lib/dither/filters";
+import { bandSizes } from "@/lib/dither/gradient";
 import type { FilterInstance } from "@/lib/dither/types";
 import { cn } from "@/lib/tailwind-utils";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -24,7 +25,11 @@ function ParamControl({ filter, param }: { filter: FilterInstance; param: ParamD
           aria-label={param.label}
           className="w-auto"
           value={value}
-          options={param.options.map((o) => ({ value: o.value, label: <PixelText>{o.label}</PixelText>, title: o.label }))}
+          options={param.options.map((o) => ({
+            value: o.value,
+            label: o.icon ? <PixelIcon name={o.icon as IconName} scale={1} /> : <PixelText>{o.label}</PixelText>,
+            title: o.label,
+          }))}
           onChange={onChange}
         />
       </FieldRow>
@@ -42,6 +47,27 @@ function ParamControl({ filter, param }: { filter: FilterInstance; param: ParamD
       unit={param.unit}
       defaultValue={param.default}
     />
+  );
+}
+
+/** Dot size per band of a glitch-gradient filter, lighter for bigger dots. */
+function BandPreview({ params }: { params: Record<string, number> }) {
+  const sizes = bandSizes({ startSize: params.startSize, endSize: params.endSize, bands: params.bands });
+  const max = Math.max(...sizes);
+  const min = Math.min(...sizes);
+  return (
+    <div className="flex h-3 border border-zinc-800" aria-hidden title="Dot size per band">
+      {sizes.map((size, i) => {
+        const shade = max === min ? 0.5 : (size - min) / (max - min);
+        return (
+          <span
+            key={i}
+            className="flex-1 border-r border-zinc-950 last:border-r-0"
+            style={{ background: `color-mix(in oklab, var(--color-zinc-200) ${Math.round(15 + shade * 70)}%, transparent)` }}
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -89,6 +115,7 @@ function FilterCard({ filter, index, count }: { filter: FilterInstance; index: n
           {def.params.map((p) => (
             <ParamControl key={p.key} filter={filter} param={p} />
           ))}
+          {filter.type === GLITCH_GRADIENT && <BandPreview params={filter.params} />}
         </div>
       )}
     </li>
@@ -97,7 +124,8 @@ function FilterCard({ filter, index, count }: { filter: FilterInstance; index: n
 
 function AddFilterMenu({ onAdded }: { onAdded: () => void }) {
   const addFilter = useSettingsStore((s) => s.addFilter);
-  const full = useSettingsStore((s) => s.settings.filters.length >= MAX_FILTERS);
+  const filters = useSettingsStore((s) => s.settings.filters);
+  const full = filters.length >= MAX_FILTERS;
   const [open, setOpen] = useState(false);
 
   return (
@@ -119,7 +147,9 @@ function AddFilterMenu({ onAdded }: { onAdded: () => void }) {
                 <li key={f.type}>
                   <button
                     type="button"
-                    className="grid w-full gap-0.5 px-2 py-1.5 text-left outline-none hover:bg-zinc-800/60 focus-visible:bg-zinc-800/60"
+                    disabled={f.unique && filters.some((x) => x.type === f.type)}
+                    title={f.unique ? "Only one per stack" : undefined}
+                    className="grid w-full gap-0.5 px-2 py-1.5 text-left outline-none hover:bg-zinc-800/60 focus-visible:bg-zinc-800/60 disabled:pointer-events-none disabled:opacity-40"
                     onClick={() => {
                       addFilter(f.type);
                       setOpen(false);
@@ -162,7 +192,7 @@ export function FiltersPanel() {
     >
       {filters.length === 0 ? (
         <p className="text-2xs leading-relaxed text-zinc-600">
-          No filters yet. Add blur, glow, warps or glitches with + — they run in order, before dithering.
+          No filters yet. Add blur, glow, warps or glitches (including the glitch gradient) with + — they run in order, before dithering.
         </p>
       ) : (
         <ol className="grid gap-2">

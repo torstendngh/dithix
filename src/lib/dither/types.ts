@@ -107,9 +107,9 @@ export type GradientDirection = "right" | "left" | "down" | "up" | "radial";
 /**
  * Glitch gradient: dot size grows in bands along a direction, optionally dissolving from the
  * undithered image into the dither. Sizes are in output pixels (the resize settings set the grid).
+ * Lives in the filter stack as a "glitch-gradient" filter; see `gradientFromFilters`.
  */
 export interface GradientSettings {
-  enabled: boolean;
   direction: GradientDirection;
   startSize: number;
   endSize: number;
@@ -133,15 +133,28 @@ export interface FilterInstance {
   params: Record<string, number>;
 }
 
-export type BackgroundMode = "transparent" | "solid" | "checker" | "stripes" | "dots" | "grid" | "gradient";
+export type BackgroundMode = "solid" | "checker" | "stripes" | "dots" | "grid" | "gradient" | "pattern";
+
+/** A hand-drawn tile for the "pattern" background. */
+export interface BackgroundPattern {
+  /** Tile width and height in cells, 2..16. */
+  size: number;
+  /** Row-major, one "0" (colour A) or "1" (colour B) per cell. */
+  cells: string;
+  /** Output pixels per cell, 1..16. */
+  scale: number;
+}
 
 /** Fill for transparent areas, composited before filters and dithering. */
 export interface BackgroundSettings {
+  /** Off leaves transparent areas transparent. */
+  enabled: boolean;
   mode: BackgroundMode;
   colorA: string;
   colorB: string;
   /** Pattern cell size in output pixels. */
   size: number;
+  pattern: BackgroundPattern;
 }
 
 export interface DitherSettings {
@@ -149,7 +162,6 @@ export interface DitherSettings {
   adjust: AdjustSettings;
   dither: DitherOptions;
   palette: PaletteSettings;
-  gradient: GradientSettings;
   /** Applied in order after adjustments and background, before dithering. */
   filters: FilterInstance[];
   background: BackgroundSettings;

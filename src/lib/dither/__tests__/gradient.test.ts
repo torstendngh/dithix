@@ -1,15 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { baseSettings } from "../defaults";
-import { assignBands, bandSizes, ditherGradient, gradientPosition } from "../gradient";
+import { baseSettings, completeSettings } from "../defaults";
+import { defaultParams, getFilter, GLITCH_GRADIENT } from "../filters";
+import {
+  assignBands,
+  bandSizes,
+  ditherGradient,
+  gradientFromFilters,
+  gradientParams,
+  gradientPosition,
+  gradientSettings,
+} from "../gradient";
 import { processImage } from "../pipeline";
 import { resample } from "../resize";
-import type { DitherSettings, PixelBuffer } from "../types";
+import type { DitherSettings, GradientSettings, PixelBuffer } from "../types";
 import { gradient as rampImage, uniqueColors } from "./helpers";
 
-const settingsWith = (patch: Partial<DitherSettings["gradient"]>): DitherSettings => {
-  const s = baseSettings();
-  // Hard band edges unless a test asks for scatter.
-  s.gradient = { ...s.gradient, enabled: true, scatter: 0, ...patch };
+const defaultGradient = (): GradientSettings => gradientSettings(defaultParams(getFilter(GLITCH_GRADIENT)!));
+
+// Hard band edges unless a test asks for scatter.
+const gradientWith = (patch: Partial<GradientSettings>): GradientSettings => ({ ...defaultGradient(), scatter: 0, ...patch });
+
+const withGradientFilter = (s: DitherSettings, g: GradientSettings, enabled = true): DitherSettings => {
+  s.filters = [...s.filters, { id: "g", type: GLITCH_GRADIENT, enabled, params: gradientParams(g) }];
   return s;
 };
 
@@ -75,8 +87,7 @@ describe("ditherGradient", () => {
   };
 
   it("keeps the output size and grows dots band by band", () => {
-    const s = settingsWith({ startSize: 1, endSize: 4, bands: 4, fadeIn: false });
-    const out = ditherGradient(resampler, W, H, s);
+    const out = ditherGradient(resampler, W, H, baseSettings(), gradientWith({ startSize: 1, endSize: 4, bands: 4, fadeIn: false }));
     expect([out.width, out.height]).toEqual([W, H]);
     // Band 4 (x 72..95) uses 4px dots, band 3 (x 48..71) 3px dots.
     expect(blocksUniform(out, 4, 72, 96)).toBe(true);
@@ -86,13 +97,12 @@ describe("ditherGradient", () => {
   });
 
   it("without fade, only palette colours appear", () => {
-    const out = ditherGradient(resampler, W, H, settingsWith({ fadeIn: false }));
+    const out = ditherGradient(resampler, W, H, baseSettings(), gradientWith({ fadeIn: false }));
     expect(uniqueColors(out)).toEqual(new Set(["9,9,11", "250,250,250"]));
   });
 
   it("fade starts from the original image and ends fully dithered", () => {
-    const s = settingsWith({ startSize: 1, endSize: 1, bands: 2, fadeIn: true });
-    const out = ditherGradient(resampler, W, H, s);
+    const out = ditherGradient(resampler, W, H, baseSettings(), gradientWith({ startSize: 1, endSize: 1, bands: 2, fadeIn: true }));
     // First column: t = 0, so every pixel is the untouched source.
     for (let y = 0; y < H; y++) expect(out.data[y * W * 4]).toBe(src.data[y * W * 4]);
     // Last column: t = 1, so only palette colours.
@@ -101,23 +111,23 @@ describe("ditherGradient", () => {
     for (const v of last) expect([9, 250]).toContain(v);
   });
 
-  it("processImage only uses the gradient when enabled", () => {
+  it("processImage only uses the gradient when its filter is on", () => {
+    const g = gradientWith({ fadeIn: false, startSize: 2, endSize: 6 });
     const off = baseSettings();
-    const on = settingsWith({ fadeIn: false, startSize: 2, endSize: 6 });
-    off.resize = on.resize = { ...off.resize, mode: "width", width: 48 };
+    off.resize = { ...off.resize, mode: "width", width: 48 };
+    const on = withGradientFilter(structuredClone(off), g);
     const plain = processImage(src, off);
     const grad = processImage(src, on);
     expect([grad.width, grad.height]).toEqual([plain.width, plain.height]);
     expect(grad.data).not.toEqual(plain.data);
-    off.gradient.enabled = false;
-    expect(processImage(src, off).data).toEqual(plain.data);
+    expect(processImage(src, withGradientFilter(structuredClone(off), g, false)).data).toEqual(plain.data);
   });
 });
 
 describe("assignBands scatter", () => {
   const W = 120;
   const H = 40;
-  const base = { ...baseSettings().gradient, enabled: true, startSize: 1, endSize: 6, bands: 6 };
+  const base = { ...defaultGradient(), startSize: 1, endSize: 6, bands: 6 };
 
   const monotonicRows = (band: Uint8Array) => {
     for (let y = 0; y < H; y++) {
@@ -157,10 +167,34 @@ describe("assignBands scatter", () => {
   });
 });
 
-describe("gradient defaults", () => {
-  it("starts disabled, with fade from original off", () => {
-    const g = baseSettings().gradient;
-    expect(g.enabled).toBe(false);
-    expect(g.fadeIn).toBe(false);
+describe("glitch gradient filter", () => {
+  it("is not in the default stack and defaults to fade off", () => {
+    expect(gradientFromFilters(baseSettings().filters)).toBeNull();
+    expect(defaultGradient().fadeIn).toBe(false);
+  });
+
+  it("round-trips settings through filter params", () => {
+    const g = gradientWith({ direction: "radial", startSize: 3, fadeIn: true, seed: 42 });
+    expect(gradientSettings(gradientParams(g))).toEqual(g);
+  });
+
+  it("migrates an enabled legacy gradient section into the filter stack", () => {
+    const legacy = { ...baseSettings(), gradient: { enabled: true, direction: "up", startSize: 2, endSize: 10, fadeIn: true } };
+    const s = completeSettings(legacy);
+    expect(s).not.toHaveProperty("gradient");
+    const g = gradientFromFilters(s.filters)!;
+    expect(g).toMatchObject({ direction: "up", startSize: 2, endSize: 10, fadeIn: true, bands: 6 });
+    expect(gradientFromFilters(completeSettings({ ...legacy, gradient: { enabled: false } }).filters)).toBeNull();
+  });
+
+  it("keeps only one gradient filter", () => {
+    const g = gradientParams(defaultGradient());
+    const filters = completeSettings({
+      filters: [
+        { id: "a", type: GLITCH_GRADIENT, enabled: true, params: g },
+        { id: "b", type: GLITCH_GRADIENT, enabled: true, params: g },
+      ],
+    }).filters;
+    expect(filters.map((f) => f.id)).toEqual(["a"]);
   });
 });

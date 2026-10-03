@@ -1,8 +1,10 @@
 import { identityCurves } from "./adjust";
 import { getPalettePreset } from "./palettes";
 import { mergeDefaults } from "../merge-defaults";
-import { normalizeFilters } from "./filters";
-import type { DitherSettings, ExportSettings } from "./types";
+import { BACKGROUND_MODES, defaultPattern, normalizePattern } from "./background";
+import { GLITCH_GRADIENT, normalizeFilters } from "./filters";
+import { gradientParams } from "./gradient";
+import type { DitherSettings, ExportSettings, GradientSettings } from "./types";
 
 /** Neutral starting point; built-in presets are defined as changes on top of this. */
 export function baseSettings(): DitherSettings {
@@ -28,19 +30,7 @@ export function baseSettings(): DitherSettings {
     },
     palette: { presetId: "zinc", colors: [...getPalettePreset("zinc")!.colors], distance: "rgb" },
     filters: [],
-    background: { mode: "transparent", colorA: "#111111", colorB: "#8a8a8a", size: 8 },
-    gradient: {
-      enabled: false,
-      direction: "right",
-      startSize: 1,
-      endSize: 8,
-      bands: 6,
-      from: 0,
-      to: 1,
-      fadeIn: false,
-      scatter: 0.35,
-      seed: 1,
-    },
+    background: { enabled: false, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8, pattern: defaultPattern() },
   };
 }
 
@@ -79,21 +69,7 @@ const OFFICIAL: DitherSettings = {
     distance: "rgb",
   },
   filters: [],
-  background: { mode: "transparent", colorA: "#111111", colorB: "#8a8a8a", size: 8 },
-  gradient: {
-    enabled: false,
-    direction: "right",
-    startSize: 1,
-    endSize: 8,
-    bands: 6,
-    from: 0,
-    to: 1,
-    // Deepslate had this on, but the gradient is off there; kept off so it matches the
-    // "fade defaults to off" behaviour when someone enables the gradient.
-    fadeIn: false,
-    scatter: 0.35,
-    seed: 1,
-  },
+  background: { enabled: false, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8, pattern: defaultPattern() },
 };
 
 export function officialSettings(): DitherSettings {
@@ -121,7 +97,21 @@ const NULLABLE_SETTINGS = new Set(["palette.presetId"]);
  */
 export function completeSettings(raw: unknown): DitherSettings {
   const settings = mergeDefaults(baseSettings(), raw, NULLABLE_SETTINGS);
-  // Arrays pass through mergeDefaults untouched; filters need item-level validation.
+  // The glitch gradient used to be its own `gradient` section; carry an enabled one over as a filter.
+  const legacy = (raw as { gradient?: Partial<GradientSettings> & { enabled?: unknown } } | null)?.gradient;
+  if (legacy?.enabled === true && Array.isArray(settings.filters)) {
+    settings.filters = [
+      ...settings.filters,
+      { id: GLITCH_GRADIENT, type: GLITCH_GRADIENT, enabled: true, params: gradientParams(legacy as GradientSettings) },
+    ];
+  }
+  // Background used to be switched off with a "transparent" mode instead of `enabled`.
+  const legacyBg = (raw as { background?: { enabled?: unknown; mode?: unknown } } | null)?.background;
+  if (legacyBg && typeof legacyBg.enabled !== "boolean") settings.background.enabled = legacyBg.mode !== "transparent";
+  if (!BACKGROUND_MODES.some((m) => m.value === settings.background.mode)) settings.background.mode = "solid";
+  settings.background.pattern = normalizePattern(settings.background.pattern);
+  // Arrays pass through mergeDefaults untouched; filters need item-level validation (which also
+  // fills any gradient params the legacy section was missing).
   settings.filters = normalizeFilters(settings.filters);
   return settings;
 }

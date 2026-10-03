@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { ditherGradient } from "./gradient";
+import { ditherGradient, gradientFromFilters } from "./gradient";
 import { ditherBuffer } from "./pipeline";
 import { computeOutputSize, resample, resampleCanvas } from "./resize";
 import type { DitherSettings, PixelBuffer } from "./types";
@@ -52,8 +52,9 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
       }
       return pixels;
     };
-    const out = msg.settings.gradient.enabled
-      ? ditherGradient(getResized, width, height, msg.settings)
+    const gradient = gradientFromFilters(msg.settings.filters);
+    const out = gradient
+      ? ditherGradient(getResized, width, height, msg.settings, gradient)
       : ditherBuffer(getResized(width, height), msg.settings);
     const buffer = out.data.buffer as ArrayBuffer;
     const response: WorkerResponse = {

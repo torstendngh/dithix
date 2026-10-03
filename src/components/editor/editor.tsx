@@ -9,7 +9,6 @@ import { CurvesPanel } from "./panels/curves-panel";
 import { DitherPanel } from "./panels/dither-panel";
 import { ExportPanel } from "./panels/export-panel";
 import { FiltersPanel } from "./panels/filters-panel";
-import { GradientPanel } from "./panels/gradient-panel";
 import { PalettePanel } from "./panels/palette-panel";
 import { ResolutionPanel } from "./panels/resolution-panel";
 import { SidebarHeader } from "./sidebar-header";
@@ -81,7 +80,6 @@ export default function Editor() {
         <div className="relative isolate z-0">
           <ResolutionPanel />
           <DitherPanel />
-          <GradientPanel />
           <PalettePanel />
           <FiltersPanel />
           <BackgroundPanel />

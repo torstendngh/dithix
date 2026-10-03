@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PixelIcon, type IconName } from "@/components/icons/pixel-icon";
 import { Input } from "@/components/shared/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/shared/popover";
@@ -157,7 +157,22 @@ export function LibraryPicker({
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
   const Noun = noun[0].toUpperCase() + noun.slice(1);
-  const active = [...saved, ...builtIn.flatMap((g) => g.items)].find((i) => i.id === activeId);
+  // Menu order, for stepping with the arrows.
+  const order = [...saved, ...builtIn.flatMap((g) => g.items)];
+  const active = order.find((i) => i.id === activeId);
+  // Where stepping continues from once the current settings stop matching any item.
+  const lastId = useRef(activeId);
+  useEffect(() => {
+    if (activeId) lastId.current = activeId;
+  }, [activeId]);
+
+  const step = (direction: -1 | 1) => {
+    if (order.length === 0) return;
+    const i = order.findIndex((item) => item.id === (activeId ?? lastId.current));
+    const next = i < 0 ? (direction > 0 ? 0 : order.length - 1) : (i + direction + order.length) % order.length;
+    lastId.current = order[next].id;
+    onApply(order[next].id);
+  };
 
   const apply = (id: string) => {
     onApply(id);
@@ -220,44 +235,65 @@ export function LibraryPicker({
 
   return (
     <div className="flex gap-1">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          aria-label={triggerLabel}
-          className="flex h-8 min-w-0 flex-1 items-center gap-1.5 border border-input bg-zinc-950 px-2 text-left outline-none hover:border-zinc-700 hover:bg-zinc-900 focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring data-popup-open:border-zinc-600"
-        >
-          <PixelIcon name={icon} scale={1} className="text-zinc-500" />
-          <span className={cn("min-w-0 flex-1 truncate", !active && "text-zinc-500")}>
-            {active?.name ?? "Custom"}
-          </span>
-          {triggerPreview}
-          <PixelIcon name="chevron-down" scale={1} className="text-muted-foreground" />
-        </PopoverTrigger>
-        {/* Spans the trigger plus the save button next to it. */}
-        <PopoverContent className="w-[calc(var(--anchor-width)+2.25rem)] pb-1" aria-label={`${Noun}s`}>
-          <GroupLabel>Saved</GroupLabel>
-          {saved.length === 0 ? (
-            <p className="px-2 pb-1 text-zinc-600">Nothing saved yet.</p>
-          ) : (
-            <ul>{saved.map((item) => row(item, true))}</ul>
-          )}
-          {builtIn.map((group) => (
-            <div key={group.label}>
-              <GroupLabel>{group.label}</GroupLabel>
-              <ul>{group.items.map((item) => row(item, false))}</ul>
+      {/* Trigger and arrows overlap by 1px; whichever is hovered, focused or open is lifted. */}
+      <div className="flex min-w-0 flex-1">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger
+            aria-label={triggerLabel}
+            className="relative flex h-8 min-w-0 flex-1 items-center gap-1.5 border border-input hover:z-10 focus-visible:z-20 data-popup-open:z-10 bg-zinc-950 px-2 text-left outline-none hover:border-zinc-700 hover:bg-zinc-900 focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring data-popup-open:border-zinc-600"
+          >
+            <PixelIcon name={icon} scale={1} className="text-zinc-500" />
+            <span className={cn("min-w-0 flex-1 truncate", !active && "text-zinc-500")}>
+              {active?.name ?? "Custom"}
+            </span>
+            {triggerPreview}
+            <PixelIcon name="chevron-down" scale={1} className="text-muted-foreground" />
+          </PopoverTrigger>
+          {/* Spans the trigger plus the arrows and save button next to it. */}
+          <PopoverContent className="w-[calc(var(--anchor-width)+5.125rem)] pb-1" aria-label={`${Noun}s`}>
+            <GroupLabel>Saved</GroupLabel>
+            {saved.length === 0 ? (
+              <p className="px-2 pb-1 text-zinc-600">Nothing saved yet.</p>
+            ) : (
+              <ul>{saved.map((item) => row(item, true))}</ul>
+            )}
+            {builtIn.map((group) => (
+              <div key={group.label}>
+                <GroupLabel>{group.label}</GroupLabel>
+                <ul>{group.items.map((item) => row(item, false))}</ul>
+              </div>
+            ))}
+            <div className="mx-1 mt-1 border-t border-zinc-800 pt-1">
+              <button
+                type="button"
+                onClick={startNaming}
+                className="flex h-7 w-full items-center gap-2 px-1 text-left text-zinc-400 outline-none hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:bg-zinc-800/60"
+              >
+                <PixelIcon name="plus" scale={1} />
+                Save current as new {noun}…
+              </button>
             </div>
-          ))}
-          <div className="mx-1 mt-1 border-t border-zinc-800 pt-1">
-            <button
-              type="button"
-              onClick={startNaming}
-              className="flex h-7 w-full items-center gap-2 px-1 text-left text-zinc-400 outline-none hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:bg-zinc-800/60"
-            >
-              <PixelIcon name="plus" scale={1} />
-              Save current as new {noun}…
-            </button>
-          </div>
-        </PopoverContent>
-      </Popover>
+          </PopoverContent>
+        </Popover>
+        <IconButton
+          icon="chevron-left"
+          label={`Previous ${noun}`}
+          variant="outline"
+          size="icon"
+          side="bottom"
+          className="relative -ml-px w-6 hover:z-10 focus-visible:z-20"
+          onClick={() => step(-1)}
+        />
+        <IconButton
+          icon="chevron-right"
+          label={`Next ${noun}`}
+          variant="outline"
+          size="icon"
+          side="bottom"
+          className="relative -ml-px w-6 hover:z-10 focus-visible:z-20"
+          onClick={() => step(1)}
+        />
+      </div>
       <IconButton
         icon="save"
         label={`Save as new ${noun}`}

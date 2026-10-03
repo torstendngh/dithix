@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { baseSettings } from "../defaults";
 import { toSvg, upscaleNearest } from "../export";
+import { MAX_PALETTE_COLORS } from "@/stores/settings-store";
 import { extractPalette, PALETTE_PRESETS } from "../palettes";
 import { processImage } from "../pipeline";
 import { computeOutputSize, MAX_DIMENSION, resample } from "../resize";
@@ -110,6 +111,9 @@ describe("palettes", () => {
     expect(ids.size).toBe(PALETTE_PRESETS.length);
     for (const p of PALETTE_PRESETS) {
       expect(p.colors.length).toBeGreaterThanOrEqual(2);
+      // Must fit the editor's palette limit, or applying it would silently drop colours.
+      expect(p.colors.length, p.id).toBeLessThanOrEqual(MAX_PALETTE_COLORS);
+      expect(new Set(p.colors).size, `${p.id} has duplicate colours`).toBe(p.colors.length);
       for (const c of p.colors) expect(c).toMatch(/^#[0-9a-f]{6}$/);
     }
   });

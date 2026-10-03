@@ -2,13 +2,16 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { identityCurves } from "@/lib/dither/adjust";
+import { bayerMatrix, clusterMatrix } from "@/lib/dither/matrices";
+import { patternFromMatrix } from "@/lib/dither/background";
 import { baseSettings, completeSettings, officialSettings } from "@/lib/dither/defaults";
+import { defaultParams, getFilter } from "@/lib/dither/filters";
 import { getPalettePreset } from "@/lib/dither/palettes";
 import type { DitherSettings } from "@/lib/dither/types";
 import { deepEqual } from "@/lib/deep-equal";
 import { newId } from "@/lib/new-id";
 
-export type PresetGroup = "official" | "classic" | "games" | "print" | "wild";
+export type PresetGroup = "official" | "classic" | "games" | "print" | "wild" | "fx";
 
 export interface Preset {
   id: string;
@@ -39,6 +42,16 @@ const withColors = (s: DitherSettings, colors: string[]) => {
 const withPalette = (s: DitherSettings, id: string) => {
   s.palette.presetId = id;
   s.palette.colors = [...getPalettePreset(id)!.colors];
+};
+
+/** Filter stack from [type, params] pairs; ids are fixed so presets compare equal when applied. */
+const withFilters = (s: DitherSettings, filters: [string, Record<string, number>?][]) => {
+  s.filters = filters.map(([type, params], i) => ({
+    id: `${type}-${i}`,
+    type,
+    enabled: true,
+    params: { ...defaultParams(getFilter(type)!), ...params },
+  }));
 };
 
 /**
@@ -322,6 +335,202 @@ export const BUILTIN_PRESETS: Preset[] = [
       withPalette(s, "sweetie16");
     },
     "wild",
+  ),
+  // ── Glitch & FX: filters, the glitch gradient and pattern backgrounds ────
+  builtIn(
+    "vhs-tape",
+    "VHS Tape",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 320 };
+      s.dither.algorithm = "bayer4";
+      s.dither.strength = 0.7;
+      s.adjust.saturation = 25;
+      s.palette.distance = "redmean";
+      withPalette(s, "edg32");
+      withFilters(s, [
+        ["tv-glitch", { wobble: 40, tracking: 60, position: 78, chroma: 6, noise: 20, seed: 7 }],
+        ["scanlines", { spacing: 3, darkness: 35 }],
+      ]);
+    },
+    "fx",
+  ),
+  builtIn(
+    "dead-channel",
+    "Dead Channel",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 256 };
+      s.dither.algorithm = "white-noise";
+      s.adjust.saturation = -100;
+      s.adjust.contrast = 20;
+      s.palette.distance = "luma";
+      withPalette(s, "gray4");
+      withFilters(s, [
+        ["tv-glitch", { wobble: 80, tracking: 100, position: 35, chroma: 0, noise: 70, seed: 13 }],
+        ["scanlines", { spacing: 2, darkness: 50 }],
+        ["vignette", { amount: 70, size: 40 }],
+      ]);
+    },
+    "fx",
+  ),
+  builtIn(
+    "arcade-cabinet",
+    "Arcade Cabinet",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 256 };
+      s.dither.algorithm = "bayer4";
+      s.dither.strength = 0.6;
+      s.adjust.contrast = 15;
+      s.adjust.saturation = 30;
+      s.palette.distance = "redmean";
+      withPalette(s, "nes");
+      withFilters(s, [
+        ["glow", { threshold: 170, radius: 6, strength: 0.8 }],
+        ["rgb-split", { offset: 1 }],
+        ["scanlines", { spacing: 3, darkness: 45 }],
+        ["vignette", { amount: 45, size: 55 }],
+      ]);
+    },
+    "fx",
+  ),
+  builtIn(
+    "pixel-dissolve",
+    "Pixel Dissolve",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 400 };
+      s.dither.algorithm = "bayer8";
+      s.palette.distance = "redmean";
+      withPalette(s, "db32");
+      withFilters(s, [["glitch-gradient", { direction: 0, startSize: 1, endSize: 12, bands: 8, scatter: 0.5, fadeIn: 1 }]]);
+    },
+    "fx",
+  ),
+  builtIn(
+    "shockwave",
+    "Shockwave",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 360 };
+      s.dither.algorithm = "cluster4";
+      s.adjust.contrast = 20;
+      s.palette.distance = "redmean";
+      withPalette(s, "hept32");
+      withFilters(s, [
+        ["bulge", { strength: 35, radius: 70 }],
+        ["glow", { threshold: 160, radius: 10, strength: 1 }],
+        ["glitch-gradient", { direction: 4, startSize: 1, endSize: 10, bands: 10, scatter: 0.6, from: 0.15 }],
+      ]);
+    },
+    "fx",
+  ),
+  builtIn(
+    "datamosh",
+    "Datamosh",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 360 };
+      s.dither.algorithm = "floyd-steinberg";
+      s.dither.strength = 0.8;
+      s.adjust.saturation = 40;
+      s.palette.distance = "redmean";
+      withPalette(s, "edg16");
+      withFilters(s, [
+        ["block-glitch", { amount: 25, size: 16, seed: 4 }],
+        ["slice-shift", { amount: 12, slices: 24, seed: 9 }],
+        ["rgb-split", { offset: 4, angle: 0 }],
+      ]);
+    },
+    "fx",
+  ),
+  builtIn(
+    "melt-sort",
+    "Melt Sort",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 320 };
+      s.dither.algorithm = "bayer4";
+      s.dither.strength = 0.6;
+      s.palette.distance = "redmean";
+      withPalette(s, "zughy32");
+      withFilters(s, [
+        ["pixel-sort", { direction: 1, low: 70, high: 220 }],
+        ["wave", { amplitude: 6, wavelength: 90, direction: 1 }],
+      ]);
+    },
+    "fx",
+  ),
+  builtIn(
+    "liquid-chrome",
+    "Liquid Chrome",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 360 };
+      s.dither.algorithm = "cluster8";
+      s.adjust.saturation = -100;
+      s.adjust.contrast = 30;
+      s.palette.distance = "luma";
+      withPalette(s, "copper-tech");
+      withFilters(s, [
+        ["luma-displace", { amount: 40, direction: 1, smooth: 3 }],
+        ["swirl", { angle: 120, radius: 80 }],
+        ["sharpen", { amount: 1.2 }],
+      ]);
+    },
+    "fx",
+  ),
+  builtIn(
+    "neon-ink",
+    "Neon Ink",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 400 };
+      s.dither.algorithm = "bayer2";
+      s.adjust.contrast = 20;
+      s.palette.distance = "redmean";
+      withPalette(s, "nyx8");
+      withFilters(s, [
+        ["edges", { amount: 100, mode: 1 }],
+        ["glow", { threshold: 90, radius: 8, strength: 1.4 }],
+      ]);
+    },
+    "fx",
+  ),
+  builtIn(
+    "comic-sticker",
+    "Comic Sticker",
+    (s) => {
+      // For cut-outs: transparent areas become a Bayer-dot comic backdrop in palette colours.
+      s.resize = { ...s.resize, mode: "width", width: 360 };
+      s.dither.algorithm = "halftone";
+      s.adjust.contrast = 15;
+      withColors(s, ["#1b1b1b", "#f7f1e3", "#ffd23f", "#ee4266", "#3bceac", "#0e79b2"]);
+      withFilters(s, [["edges", { amount: 85, mode: 0 }]]);
+      s.background = {
+        ...s.background,
+        enabled: true,
+        mode: "pattern",
+        colorA: "#ffd23f",
+        colorB: "#ee4266",
+        pattern: patternFromMatrix(clusterMatrix(4), 0.3, 2),
+      };
+    },
+    "fx",
+  ),
+  builtIn(
+    "game-boy-camera",
+    "Game Boy Camera",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 128 };
+      s.dither.algorithm = "bayer4";
+      s.adjust.contrast = 25;
+      s.adjust.saturation = -100;
+      s.palette.distance = "luma";
+      withPalette(s, "gameboy");
+      withFilters(s, [["sharpen", { amount: 1.5, radius: 1 }]]);
+      s.background = {
+        ...s.background,
+        enabled: true,
+        mode: "pattern",
+        colorA: "#0f380f",
+        colorB: "#306230",
+        pattern: patternFromMatrix(bayerMatrix(4), 0.25),
+      };
+    },
+    "fx",
   ),
 ];
 

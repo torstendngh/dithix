@@ -11,6 +11,7 @@ const BUILTIN_GROUPS: { group: PresetGroup; label: string }[] = [
   { group: "games", label: "Games" },
   { group: "print", label: "Print" },
   { group: "wild", label: "Wild" },
+  { group: "fx", label: "Glitch & FX" },
 ];
 
 /** Preset manager: apply, save, overwrite, rename and delete. */

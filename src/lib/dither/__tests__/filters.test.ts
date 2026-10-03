@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { BACKGROUND_MODES, fillBackground } from "../background";
-import { baseSettings } from "../defaults";
+import { BACKGROUND_MODES, defaultPattern, fillBackground, normalizePattern, patternFromMatrix, resizePattern } from "../background";
+import { bayerMatrix } from "../matrices";
+import { baseSettings, completeSettings } from "../defaults";
 import { getPalettePreset } from "../palettes";
 import { applyFilters, boxBlur, defaultParams, FILTERS, getFilter, normalizeFilters, sortPixels } from "../filters";
 import { processImage } from "../pipeline";
@@ -117,11 +118,31 @@ describe("individual filters", () => {
     }
   });
 
+  it("TV glitch with everything at zero leaves the image alone", () => {
+    const out = applyFilters(src, [inst("tv-glitch", { wobble: 0, tracking: 0, chroma: 0, noise: 0 })]);
+    for (let i = 0; i < src.data.length; i++) expect(Math.abs(out.data[i] - src.data[i])).toBeLessThanOrEqual(1);
+  });
+
+  it("TV glitch tears rows sideways, mostly around the tracking band, and is seeded", () => {
+    const img = textured(80, 100);
+    const p = { wobble: 0, tracking: 100, position: 50, chroma: 0, noise: 0 };
+    const out = applyFilters(img, [inst("tv-glitch", p)]);
+    const rowChanged = (y: number) =>
+      out.data.slice(y * 80 * 4, (y + 1) * 80 * 4).join() !== img.data.slice(y * 80 * 4, (y + 1) * 80 * 4).join();
+    expect(rowChanged(50)).toBe(true);
+    expect(rowChanged(5)).toBe(false);
+    expect(rowChanged(95)).toBe(false);
+    expect(applyFilters(img, [inst("tv-glitch", { ...p, seed: 2 })]).data).not.toEqual(out.data);
+  });
+
   it("filters run at band scale inside the glitch gradient", () => {
     const settings = baseSettings();
     settings.resize = { ...settings.resize, mode: "width", width: 48 };
-    settings.gradient = { ...settings.gradient, enabled: true, startSize: 1, endSize: 6, scatter: 0 };
-    settings.filters = [inst("wave", { amplitude: 6 }), inst("slice-shift")];
+    settings.filters = [
+      inst("wave", { amplitude: 6 }),
+      inst("glitch-gradient", { startSize: 1, endSize: 6, scatter: 0 }),
+      inst("slice-shift"),
+    ];
     const out = processImage(src, settings);
     expect([out.width, out.height]).toEqual([48, 32]);
   });
@@ -154,23 +175,23 @@ describe("fillBackground", () => {
     return img;
   };
 
-  it("is a no-op in transparent mode", () => {
+  it("is a no-op when off", () => {
     const img = transparentHalf();
-    expect(fillBackground(img, { mode: "transparent", colorA: "#000000", colorB: "#ffffff", size: 4 })).toBe(img);
+    expect(fillBackground(img, { enabled: false, mode: "solid", colorA: "#000000", colorB: "#ffffff", size: 4, pattern: defaultPattern() })).toBe(img);
   });
 
   it("fills only transparent pixels and makes the result opaque", () => {
-    const out = fillBackground(transparentHalf(), { mode: "solid", colorA: "#0000ff", colorB: "#ffffff", size: 4 });
+    const out = fillBackground(transparentHalf(), { enabled: true, mode: "solid", colorA: "#0000ff", colorB: "#ffffff", size: 4, pattern: defaultPattern() });
     expect([...out.data.slice(0, 4)]).toEqual([0, 0, 255, 255]);
     const bottom = out.data.length - 4;
     expect([...out.data.slice(bottom, bottom + 4)]).toEqual([200, 0, 0, 255]);
   });
 
-  it.each(BACKGROUND_MODES.filter((m) => !["transparent", "solid", "gradient"].includes(m.value)).map((m) => m.value))(
+  it.each(BACKGROUND_MODES.filter((m) => !["solid", "gradient"].includes(m.value)).map((m) => m.value))(
     "%s pattern uses both colours",
     (mode) => {
       const empty = solid(32, 32, [0, 0, 0, 0]);
-      const out = fillBackground(empty, { mode, colorA: "#000000", colorB: "#ffffff", size: 8 });
+      const out = fillBackground(empty, { enabled: true, mode, colorA: "#000000", colorB: "#ffffff", size: 8, pattern: defaultPattern() });
       const values = new Set<number>();
       for (let i = 0; i < out.data.length; i += 4) values.add(out.data[i]);
       expect(values).toEqual(new Set([0, 255]));
@@ -187,10 +208,58 @@ describe("default background survives dithering", () => {
     const palette = getPalettePreset(paletteId)!;
     settings.palette = { ...settings.palette, presetId: palette.id, colors: [...palette.colors] };
     settings.resize = { ...settings.resize, mode: "scale", scale: 100 };
-    settings.background = { ...settings.background, mode: "checker" };
+    settings.background = { ...settings.background, enabled: true, mode: "checker" };
     const out = processImage(solid(64, 64, [0, 0, 0, 0]), settings);
     const colors = new Set<string>();
     for (let i = 0; i < out.data.length; i += 4) colors.add(`${out.data[i]},${out.data[i + 1]},${out.data[i + 2]}`);
     expect(colors.size).toBeGreaterThan(1);
+  });
+});
+
+describe("legacy background", () => {
+  it("turns the old transparent mode into a switched-off background", () => {
+    const bg = (mode: string) => completeSettings({ background: { mode, colorA: "#123456" } }).background;
+    expect(bg("transparent")).toMatchObject({ enabled: false, mode: "solid", colorA: "#123456" });
+    expect(bg("checker")).toMatchObject({ enabled: true, mode: "checker" });
+    expect(completeSettings({ background: { enabled: false, mode: "dots" } }).background).toMatchObject({ enabled: false, mode: "dots" });
+  });
+});
+
+describe("custom background pattern", () => {
+  const bg = (pattern: ReturnType<typeof defaultPattern>) =>
+    ({ enabled: true, mode: "pattern", colorA: "#000000", colorB: "#ffffff", size: 8, pattern }) as const;
+
+  it("tiles the drawn cells at the given pixel scale", () => {
+    const pattern = { size: 2, cells: "1000", scale: 2 };
+    const out = fillBackground(solid(8, 8, [0, 0, 0, 0]), bg(pattern));
+    const at = (x: number, y: number) => out.data[(y * 8 + x) * 4];
+    expect([at(0, 0), at(1, 1), at(2, 0), at(0, 2), at(4, 4), at(5, 5)]).toEqual([255, 255, 0, 0, 255, 255]);
+  });
+
+  it("builds Bayer presets by density", () => {
+    expect(patternFromMatrix(bayerMatrix(2), 0.25).cells).toBe("1000");
+    expect(patternFromMatrix(bayerMatrix(2), 0.75).cells).toBe("1101");
+    expect(patternFromMatrix(bayerMatrix(4), 0).cells).toBe("0".repeat(16));
+    expect(patternFromMatrix(bayerMatrix(8), 1).cells).toBe("1".repeat(64));
+  });
+
+  it("repeats the tile when resized", () => {
+    expect(resizePattern({ size: 2, cells: "1001", scale: 1 }, 4).cells).toBe("1010010110100101");
+  });
+
+  it("falls back to the default tile when malformed, keeping a valid scale", () => {
+    expect(normalizePattern({ size: 3, cells: "101", scale: 4 })).toEqual({ ...defaultPattern(), scale: 4 });
+    expect(normalizePattern({ size: 2, cells: "10x1", scale: 1 })).toEqual(defaultPattern());
+    expect(normalizePattern({ size: 2, cells: "1001", scale: 99 })).toEqual({ size: 2, cells: "1001", scale: 16 });
+  });
+
+  it("survives dithering when its colours are in the palette", () => {
+    const settings = baseSettings(); // zinc: #09090b / #fafafa
+    settings.resize = { ...settings.resize, mode: "scale", scale: 100 };
+    settings.background = { ...bg({ size: 2, cells: "1000", scale: 1 }), colorA: "#09090b", colorB: "#fafafa" };
+    const out = processImage(solid(8, 8, [0, 0, 0, 0]), settings);
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) expect(out.data[(y * 8 + x) * 4], `${x},${y}`).toBe(x % 2 === 0 && y % 2 === 0 ? 250 : 9);
+    }
   });
 });

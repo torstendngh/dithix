@@ -22,8 +22,8 @@ export interface ParamDef {
   unit?: string;
   /** Shown multiplied, e.g. 100 for percentages stored as fractions. */
   display?: number;
-  /** Discrete choices, rendered as a segmented control. */
-  options?: { value: number; label: string }[];
+  /** Discrete choices, rendered as a segmented control (as icons when given). */
+  options?: { value: number; label: string; icon?: string }[];
 }
 
 export type FilterCategory = "basic" | "stylize" | "warp" | "glitch";
@@ -34,6 +34,13 @@ export interface FilterDef {
   category: FilterCategory;
   description: string;
   params: ParamDef[];
+  /** At most one instance in the stack. */
+  unique?: boolean;
+  /**
+   * Changes how the stack is dithered instead of editing pixels: `apply` is a no-op and the
+   * pipeline reads the params (see `gradientFromFilters`). Position in the stack doesn't matter.
+   */
+  render?: boolean;
   apply: (src: PixelBuffer, p: Record<string, number>, ctx: FilterContext) => PixelBuffer;
 }
 
@@ -120,6 +127,17 @@ const DIRECTION = [
   { value: 0, label: "Horizontal" },
   { value: 1, label: "Vertical" },
 ];
+
+/** Glitch gradient directions, indexed like `GRADIENT_DIRECTIONS` in gradient.ts. */
+const GRADIENT_DIRECTION = [
+  { value: 0, label: "Left to right", icon: "arrow-right" },
+  { value: 1, label: "Right to left", icon: "arrow-left" },
+  { value: 2, label: "Top to bottom", icon: "arrow-down" },
+  { value: 3, label: "Bottom to top", icon: "arrow-up" },
+  { value: 4, label: "Centre outwards", icon: "radial" },
+];
+
+export const GLITCH_GRADIENT = "glitch-gradient";
 
 // ── registry ─────────────────────────────────────────────────────────────
 
@@ -496,7 +514,137 @@ export const FILTERS: FilterDef[] = [
       return out;
     },
   },
+  {
+    type: "tv-glitch",
+    name: "TV glitch",
+    category: "glitch",
+    description: "Bad analog signal: wobbling lines, a VHS tracking band, colour bleed and static.",
+    params: [
+      { key: "wobble", label: "Wobble", min: 0, max: 100, step: 1, default: 35, unit: "%" },
+      { key: "tracking", label: "Tracking", min: 0, max: 100, step: 1, default: 50, unit: "%" },
+      { key: "position", label: "Band at", min: 0, max: 100, step: 1, default: 70, unit: "%" },
+      { key: "chroma", label: "Colour bleed", min: 0, max: 30, step: 1, default: 5, unit: "px" },
+      { key: "noise", label: "Static", min: 0, max: 100, step: 1, default: 25, unit: "%" },
+      { key: "seed", label: "Seed", min: 0, max: 9999, step: 1, default: 1 },
+    ],
+    apply: (src, p, ctx) => tvGlitch(src, p, ctx),
+  },
+  {
+    type: GLITCH_GRADIENT,
+    name: "Glitch gradient",
+    category: "glitch",
+    description: "Dither in bands whose dots grow from start to end size. Applies to the whole stack.",
+    unique: true,
+    render: true,
+    params: [
+      { key: "direction", label: "Direction", min: 0, max: 4, default: 0, options: GRADIENT_DIRECTION },
+      { key: "startSize", label: "Start dot", min: 1, max: 32, step: 1, default: 1, unit: "px" },
+      { key: "endSize", label: "End dot", min: 1, max: 32, step: 1, default: 8, unit: "px" },
+      { key: "bands", label: "Bands", min: 2, max: 24, step: 1, default: 6 },
+      { key: "scatter", label: "Scatter", min: 0, max: 1, step: 0.01, default: 0.35, display: 100, unit: "%" },
+      { key: "seed", label: "Seed", min: 0, max: 99999, step: 1, default: 1 },
+      { key: "from", label: "From", min: 0, max: 1, step: 0.01, default: 0, display: 100, unit: "%" },
+      { key: "to", label: "To", min: 0, max: 1, step: 0.01, default: 1, display: 100, unit: "%" },
+      { key: "fadeIn", label: "Fade from original", min: 0, max: 1, default: 0, options: [{ value: 0, label: "Off" }, { value: 1, label: "On" }] },
+    ],
+    apply: (src) => src,
+  },
 ];
+
+/**
+ * Analog TV / VHS breakdown. Every scanline is shifted by a slow sync wobble plus random jitter
+ * and the odd hard tear; a tracking band rips lines much further and fills with static. Colour is
+ * split from brightness and smeared sideways, the way composite video bleeds. Rows are keyed in
+ * output pixels (`ctx.scale`) and the band in relative height, so it matches across resolutions.
+ */
+export function tvGlitch(src: PixelBuffer, p: Record<string, number>, ctx: FilterContext): PixelBuffer {
+  const { width: w, height: h, data: d } = src;
+  const out = new Uint8ClampedArray(d.length);
+  const s = ctx.scale;
+  const seed = Math.round(p.seed);
+  const wobble = p.wobble / 100;
+  const tracking = p.tracking / 100;
+  const noise = p.noise / 100;
+  const bleed = Math.max(0, Math.round(p.chroma * s));
+  const bandCentre = p.position / 100;
+  const bandHalf = 0.04 + tracking * 0.06;
+  const phase = hashNoise(seed, 0, 911) * Math.PI * 2;
+
+  const lumaRow = new Float32Array(w);
+  const uRow = new Float32Array(w);
+  const vRow = new Float32Array(w);
+  const alphaRow = new Float32Array(w);
+
+  for (let y = 0; y < h; y++) {
+    const line = Math.floor(y / s);
+    const t = (y + 0.5) / h;
+
+    // Horizontal sync: a slow wave, per-line jitter and occasional hard tears.
+    let shift = Math.sin(t * 9 + phase) * 6 + Math.sin(t * 37 + phase * 2) * 2;
+    shift += (hashNoise(line, 0, seed) - 0.5) * 6;
+    if (hashNoise(Math.floor(line / 3), 1, seed) < wobble * 0.06) shift += (hashNoise(line, 2, seed) - 0.5) * 120;
+    shift *= wobble;
+
+    // Tracking band: lines drag sideways the closer they are to its centre.
+    const inBand = Math.max(0, 1 - Math.abs(t - bandCentre) / bandHalf) * tracking;
+    shift += inBand * inBand * (0.5 + hashNoise(line, 3, seed)) * 0.3 * (w / s);
+    const px = Math.round(shift * s);
+
+    // Shifted line, split into brightness and colour (YUV-ish). Off the edge is blanking (black).
+    for (let x = 0; x < w; x++) {
+      const sx = x - px;
+      if (sx < 0 || sx >= w) {
+        lumaRow[x] = uRow[x] = vRow[x] = 0;
+        alphaRow[x] = 255;
+        continue;
+      }
+      const o = (y * w + sx) * 4;
+      const l = luma(d, o);
+      lumaRow[x] = l;
+      uRow[x] = d[o + 2] - l;
+      vRow[x] = d[o] - l;
+      alphaRow[x] = d[o + 3];
+    }
+
+    // Static: snow everywhere, much more inside the band, and white dropout streaks.
+    const snow = noise * 90 + inBand * 160;
+    const dropout = hashNoise(line, 4, seed) < noise * 0.04 + inBand * 0.25;
+    const dropStart = hashNoise(line, 5, seed) * w;
+    const dropLen = (0.05 + hashNoise(line, 6, seed) * 0.4) * w;
+
+    for (let x = 0; x < w; x++) {
+      // Colour is lower resolution than brightness: average it over the bleed and lag it behind.
+      let u = 0;
+      let v = 0;
+      if (bleed > 0) {
+        let n = 0;
+        for (let k = x - bleed * 2; k <= x; k++) {
+          const c = clamp(k, 0, w - 1);
+          u += uRow[c];
+          v += vRow[c];
+          n++;
+        }
+        u /= n;
+        v /= n;
+      } else {
+        u = uRow[x];
+        v = vRow[x];
+      }
+      let l = lumaRow[x];
+      if (snow > 0) l += (hashNoise(Math.floor(x / s), line, seed + 17) - 0.5) * snow;
+      if (dropout && x >= dropStart && x < dropStart + dropLen) l = 235 + hashNoise(x, line, seed + 3) * 20;
+      const o = (y * w + x) * 4;
+      // Back from YUV-ish: r = l + v, b = l + u, g from the luma weights.
+      const r = l + v;
+      const b = l + u;
+      out[o] = r;
+      out[o + 1] = (l - 0.299 * r - 0.114 * b) / 0.587;
+      out[o + 2] = b;
+      out[o + 3] = alphaRow[x];
+    }
+  }
+  return { width: w, height: h, data: out };
+}
 
 /** Sorts each run of pixels whose brightness is within [low, high], along rows or columns. */
 export function sortPixels(src: PixelBuffer, vertical: boolean, low: number, high: number, reverse: boolean): PixelBuffer {
@@ -534,13 +682,13 @@ export function defaultParams(def: FilterDef): Record<string, number> {
   return Object.fromEntries(def.params.map((p) => [p.key, p.default]));
 }
 
-/** Runs the enabled filters in order. */
+/** Runs the enabled pixel filters in order (render filters are read by the pipeline instead). */
 export function applyFilters(src: PixelBuffer, filters: FilterInstance[], ctx: FilterContext = { scale: 1 }): PixelBuffer {
   let img = src;
   for (const f of filters) {
     if (!f.enabled) continue;
     const def = getFilter(f.type);
-    if (def) img = def.apply(img, f.params, ctx);
+    if (def && !def.render) img = def.apply(img, f.params, ctx);
   }
   return img;
 }
@@ -556,7 +704,7 @@ export function normalizeFilters(raw: unknown): FilterInstance[] {
     if (!item || typeof item !== "object") continue;
     const f = item as Partial<FilterInstance>;
     const def = typeof f.type === "string" ? getFilter(f.type) : undefined;
-    if (!def) continue;
+    if (!def || (def.unique && out.some((x) => x.type === def.type))) continue;
     const params: Record<string, number> = {};
     for (const p of def.params) {
       const v = f.params?.[p.key];

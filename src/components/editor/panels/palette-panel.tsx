@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PixelIcon } from "@/components/icons/pixel-icon";
 import { Button } from "@/components/shared/button";
-import { extractPalette, PALETTE_PRESETS } from "@/lib/dither/palettes";
+import { extractPalette, PALETTE_GROUPS, PALETTE_PRESETS } from "@/lib/dither/palettes";
 import type { ColorDistance } from "@/lib/dither/types";
 import { cn } from "@/lib/tailwind-utils";
 import { MAX_PALETTE_COLORS, useSettingsStore } from "@/stores/settings-store";
@@ -90,12 +90,14 @@ function PalettePicker() {
       triggerLabel="Palette preset"
       current="colours"
       saved={saved.map((p) => ({ id: p.id, name: p.name, preview: <Strip colors={p.colors} /> }))}
-      builtIn={[
-        {
-          label: "Built-in",
-          items: PALETTE_PRESETS.map((p) => ({ id: p.id, name: p.name, preview: <Strip colors={p.colors} /> })),
-        },
-      ]}
+      builtIn={PALETTE_GROUPS.map((g) => ({
+        label: g.label,
+        items: PALETTE_PRESETS.filter((p) => p.group === g.id).map((p) => ({
+          id: p.id,
+          name: p.name,
+          preview: <Strip colors={p.colors} />,
+        })),
+      }))}
       activeId={activeId}
       triggerPreview={<Strip colors={palette.colors} />}
       onApply={(id) => {

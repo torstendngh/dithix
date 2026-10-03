@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { hexToRgb } from "@/lib/dither/color";
-import { baseSettings, defaultSettings, officialSettings } from "@/lib/dither/defaults";
+import { baseSettings, completeSettings, defaultSettings, officialSettings } from "@/lib/dither/defaults";
+import { gradientFromFilters } from "@/lib/dither/gradient";
 import { getPalettePreset } from "@/lib/dither/palettes";
 import { processImage } from "@/lib/dither/pipeline";
 import { deepEqual } from "@/lib/deep-equal";
@@ -24,20 +25,36 @@ describe("built-in presets", () => {
   it("have unique ids and names, and every one has a group", () => {
     expect(new Set(BUILTIN_PRESETS.map((p) => p.id)).size).toBe(BUILTIN_PRESETS.length);
     expect(new Set(BUILTIN_PRESETS.map((p) => p.name)).size).toBe(BUILTIN_PRESETS.length);
-    for (const p of BUILTIN_PRESETS) expect(["official", "classic", "games", "print", "wild"]).toContain(p.group);
+    for (const p of BUILTIN_PRESETS) expect(["official", "classic", "games", "print", "wild", "fx"]).toContain(p.group);
     expect(BUILTIN_PRESETS.filter((p) => p.group === "games").map((p) => p.name)).toContain("Overworld");
     expect(BUILTIN_PRESETS.filter((p) => p.group === "wild").length).toBeGreaterThanOrEqual(6);
   });
 
-  it("never switch on the glitch gradient", () => {
-    for (const p of BUILTIN_PRESETS) expect(p.settings.gradient.enabled, p.name).toBe(false);
+  it("only switch on the glitch gradient in Glitch & FX", () => {
+    for (const p of BUILTIN_PRESETS) {
+      if (p.group !== "fx") expect(gradientFromFilters(p.settings.filters), p.name).toBeNull();
+    }
+  });
+
+  it("are unchanged by validation, so the picker recognises them once applied", () => {
+    for (const p of BUILTIN_PRESETS) expect(completeSettings(structuredClone(p.settings)), p.name).toEqual(p.settings);
+  });
+
+  it("use palette colours for pattern backgrounds, so the pattern survives the dither", () => {
+    for (const p of BUILTIN_PRESETS) {
+      const bg = p.settings.background;
+      if (!bg.enabled) continue;
+      const colors = p.settings.palette.colors.map((c) => c.toLowerCase());
+      expect(colors, p.name).toContain(bg.colorA.toLowerCase());
+      if (bg.mode !== "solid") expect(colors, p.name).toContain(bg.colorB.toLowerCase());
+    }
   });
 
   const src = testImage(120, 80);
   it.each(BUILTIN_PRESETS.map((p) => [p.name, p] as const))("%s renders with its own palette", (_, preset) => {
     const out = processImage(src, preset.settings);
     expect(out.width).toBeGreaterThan(0);
-    if (preset.settings.gradient.enabled && preset.settings.gradient.fadeIn) return; // shows original pixels on purpose
+    if (gradientFromFilters(preset.settings.filters)?.fadeIn) return; // shows original pixels on purpose
     const allowed = new Set(preset.settings.palette.colors.map((c) => hexToRgb(c).join(",")));
     for (let i = 0; i < out.data.length; i += 4) {
       if (out.data[i + 3] === 0) continue;
@@ -47,7 +64,8 @@ describe("built-in presets", () => {
 });
 
 describe("official dithix preset", () => {
-  // The "deepslate" preset as exported from the browser (fade turned off, see defaults.ts).
+  // The "deepslate" preset as exported from the browser. Its `gradient` section (off) is gone now
+  // that the glitch gradient is a filter.
   const deepslate = {
     resize: { mode: "height", scale: 36, width: 512, height: 256, filter: "area" },
     adjust: {
@@ -61,10 +79,13 @@ describe("official dithix preset", () => {
     },
     dither: { algorithm: "bayer8", strength: 1, spreadMode: "fixed", spread: 64, bias: 0, transpose: false, serpentine: true, seed: 1 },
     palette: { presetId: "zinc-mint", colors: ["#27272a", "#3f3f46", "#52525b", "#60ffd3", "#18181b"], distance: "rgb" },
-    gradient: { enabled: false, direction: "right", startSize: 1, endSize: 8, bands: 6, from: 0, to: 1, fadeIn: false, scatter: 0.35, seed: 1 },
     // Added after the export; neutral so the look is unchanged.
     filters: [],
-    background: { mode: "transparent", colorA: "#111111", colorB: "#8a8a8a", size: 8 },
+    background: {
+      enabled: false, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8,
+      // Bayer 4×4 at 50% is a checkerboard.
+      pattern: { size: 4, cells: "1010010110100101", scale: 1 },
+    },
   };
 
   const official = () => BUILTIN_PRESETS.find((p) => p.name === "dithix")!;

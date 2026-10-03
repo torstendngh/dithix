@@ -15,7 +15,6 @@ import type {
   DitherSettings,
   BackgroundSettings,
   ExportSettings,
-  GradientSettings,
   ResizeSettings,
 } from "@/lib/dither/types";
 import { mergeDefaults } from "@/lib/merge-defaults";
@@ -31,8 +30,7 @@ interface SettingsState {
   setCurve: (channel: CurveChannel, points: CurvePoint[]) => void;
   resetCurves: (channel?: CurveChannel) => void;
   setDither: (patch: Partial<DitherOptions>) => void;
-  setGradient: (patch: Partial<GradientSettings>) => void;
-  /** Appends a filter with default params; returns its id (or null at the limit / unknown type). */
+  /** Appends a filter with default params; returns its id (or null at the limit / unknown / duplicate unique type). */
   addFilter: (type: string) => string | null;
   removeFilter: (id: string) => void;
   moveFilter: (id: string, direction: -1 | 1) => void;
@@ -79,13 +77,10 @@ export const useSettingsStore = create<SettingsState>()(
         set((s) => {
           Object.assign(s.settings.dither, patch);
         }),
-      setGradient: (patch) =>
-        set((s) => {
-          Object.assign(s.settings.gradient, patch);
-        }),
       addFilter: (type) => {
         const def = getFilter(type);
-        if (!def || get().settings.filters.length >= MAX_FILTERS) return null;
+        const { filters } = get().settings;
+        if (!def || filters.length >= MAX_FILTERS || (def.unique && filters.some((f) => f.type === type))) return null;
         const id = newId();
         set((s) => {
           s.settings.filters.push({ id, type, enabled: true, params: defaultParams(def) });
