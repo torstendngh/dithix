@@ -5,6 +5,7 @@ import { identityCurves } from "@/lib/dither/adjust";
 import { baseSettings, completeSettings, officialSettings } from "@/lib/dither/defaults";
 import { getPalettePreset } from "@/lib/dither/palettes";
 import type { DitherSettings } from "@/lib/dither/types";
+import { deepEqual } from "@/lib/deep-equal";
 import { newId } from "@/lib/new-id";
 
 export type PresetGroup = "official" | "classic" | "games" | "print" | "wild";
@@ -324,12 +325,32 @@ export const BUILTIN_PRESETS: Preset[] = [
   ),
 ];
 
+export type ImportMode = "merge" | "replace";
+
 interface PresetState {
   presets: Preset[];
   savePreset: (name: string, settings: DitherSettings) => string;
   overwritePreset: (id: string, settings: DitherSettings) => void;
   renamePreset: (id: string, name: string) => void;
   deletePreset: (id: string) => void;
+  /** Adds (merge) or swaps in (replace) presets; returns how many were added. */
+  importPresets: (presets: Preset[], mode: ImportMode) => number;
+}
+
+/**
+ * Validates presets from storage or an imported file. Drops malformed entries, fills settings
+ * added since they were saved, and never lets anything claim to be built-in.
+ */
+export function normalizePresets(raw: unknown): Preset[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((x) => x && typeof x === "object" && typeof x.id === "string" && typeof x.name === "string" && x.settings)
+    .map((x) => ({
+      id: x.id,
+      name: x.name,
+      settings: completeSettings(x.settings),
+      createdAt: typeof x.createdAt === "number" ? x.createdAt : Date.now(),
+    }));
 }
 
 
@@ -363,22 +384,34 @@ export const usePresetStore = create<PresetState>()(
         set((s) => {
           s.presets = s.presets.filter((p) => p.id !== id);
         }),
+      importPresets: (incoming, mode) => {
+        let added = 0;
+        set((s) => {
+          if (mode === "replace") {
+            s.presets = structuredClone(incoming);
+            added = incoming.length;
+            return;
+          }
+          for (const preset of incoming) {
+            const existing = s.presets.find((p) => p.id === preset.id);
+            if (existing && deepEqual(existing.settings, preset.settings) && existing.name === preset.name) continue;
+            // Same id but different content: keep both rather than overwrite.
+            s.presets.push({ ...structuredClone(preset), id: existing ? newId() : preset.id });
+            added++;
+          }
+        });
+        return added;
+      },
     })),
     {
       name: "dithix:presets",
       version: 1,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ presets: s.presets }),
-      merge: (persisted, current) => {
-        const p = persisted as Partial<PresetState> | undefined;
-        // Presets saved by older versions get defaults for any settings added since.
-        const presets = Array.isArray(p?.presets)
-          ? p.presets
-              .filter((x) => x && typeof x.id === "string" && x.settings)
-              .map((x) => ({ ...x, settings: completeSettings(x.settings) }))
-          : [];
-        return { ...current, presets };
-      },
+      merge: (persisted, current) => ({
+        ...current,
+        presets: normalizePresets((persisted as Partial<PresetState> | undefined)?.presets),
+      }),
     },
   ),
 );

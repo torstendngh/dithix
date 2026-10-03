@@ -259,3 +259,42 @@ describe("ui store (welcome dialog)", () => {
     expect(ui().welcomeOpen).toBe(true);
   });
 });
+
+describe("filter stack", () => {
+  const store = () => useSettingsStore.getState();
+  const types = () => store().settings.filters.map((f) => f.type);
+
+  it("adds filters with defaults and refuses unknown types", () => {
+    const id = store().addFilter("wave")!;
+    expect(store().settings.filters[0]).toMatchObject({ id, type: "wave", enabled: true, params: { amplitude: 12 } });
+    expect(store().addFilter("nope")).toBeNull();
+  });
+
+  it("reorders, toggles, clamps and removes", () => {
+    const a = store().addFilter("blur")!;
+    const b = store().addFilter("pixel-sort")!;
+    store().moveFilter(b, -1);
+    expect(types()).toEqual(["pixel-sort", "blur"]);
+    store().moveFilter(b, -1); // already first
+    expect(types()).toEqual(["pixel-sort", "blur"]);
+    store().setFilterEnabled(a, false);
+    store().setFilterParam(a, "radius", 500);
+    expect(store().settings.filters[1]).toMatchObject({ enabled: false, params: { radius: 20 } });
+    store().removeFilter(b);
+    expect(types()).toEqual(["blur"]);
+  });
+
+  it("stops at the filter limit", () => {
+    for (let i = 0; i < 30; i++) store().addFilter("grain");
+    expect(store().settings.filters).toHaveLength(24);
+  });
+
+  it("cleans filters coming back from storage", async () => {
+    localStorage.setItem(
+      "dithix:settings",
+      JSON.stringify({ version: 1, state: { settings: { filters: [{ type: "bogus" }, { type: "blur", params: { radius: -5 } }] } } }),
+    );
+    await useSettingsStore.persist.rehydrate();
+    expect(store().settings.filters).toEqual([expect.objectContaining({ type: "blur", params: { radius: 0 } })]);
+  });
+});

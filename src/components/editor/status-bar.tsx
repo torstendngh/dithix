@@ -1,5 +1,6 @@
 "use client";
 
+import { PixelText } from "@/components/icons/pixel-text";
 import { cn } from "@/lib/tailwind-utils";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
@@ -32,7 +33,7 @@ export function StatusBar() {
             </span>
             <span className="shrink-0">
               {source.width}×{source.height}
-              {result && <> → {result.width}×{result.height}</>}
+              {result && <PixelText>{`→ ${result.width}×${result.height}`}</PixelText>}
             </span>
             {result && (
               <span className="shrink-0 text-zinc-600">{processing ? "…" : `${duration.toFixed(0)}ms`}</span>

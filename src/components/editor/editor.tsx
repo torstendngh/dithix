@@ -4,15 +4,18 @@ import { useEffect } from "react";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { exportResult, openImage, pickImage } from "./actions";
 import { AdjustPanel } from "./panels/adjust-panel";
+import { BackgroundPanel } from "./panels/background-panel";
 import { CurvesPanel } from "./panels/curves-panel";
 import { DitherPanel } from "./panels/dither-panel";
 import { ExportPanel } from "./panels/export-panel";
+import { FiltersPanel } from "./panels/filters-panel";
 import { GradientPanel } from "./panels/gradient-panel";
 import { PalettePanel } from "./panels/palette-panel";
 import { ResolutionPanel } from "./panels/resolution-panel";
 import { SidebarHeader } from "./sidebar-header";
 import { useDitherProcessor } from "./use-dither-processor";
 import { Viewport } from "./viewport";
+import { SettingsDialog } from "./settings-dialog";
 import { WelcomeDialog } from "./welcome-dialog";
 
 const isTyping = (target: EventTarget | null) =>
@@ -80,12 +83,15 @@ export default function Editor() {
           <DitherPanel />
           <GradientPanel />
           <PalettePanel />
+          <FiltersPanel />
+          <BackgroundPanel />
           <AdjustPanel />
           <CurvesPanel />
           <ExportPanel />
         </div>
       </aside>
       <WelcomeDialog />
+      <SettingsDialog />
     </div>
   );
 }

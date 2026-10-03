@@ -125,12 +125,34 @@ export interface GradientSettings {
   seed: number;
 }
 
+/** One entry in the filter stack. Params are numbers; meanings come from the filter registry. */
+export interface FilterInstance {
+  id: string;
+  type: string;
+  enabled: boolean;
+  params: Record<string, number>;
+}
+
+export type BackgroundMode = "transparent" | "solid" | "checker" | "stripes" | "dots" | "grid" | "gradient";
+
+/** Fill for transparent areas, composited before filters and dithering. */
+export interface BackgroundSettings {
+  mode: BackgroundMode;
+  colorA: string;
+  colorB: string;
+  /** Pattern cell size in output pixels. */
+  size: number;
+}
+
 export interface DitherSettings {
   resize: ResizeSettings;
   adjust: AdjustSettings;
   dither: DitherOptions;
   palette: PaletteSettings;
   gradient: GradientSettings;
+  /** Applied in order after adjustments and background, before dithering. */
+  filters: FilterInstance[];
+  background: BackgroundSettings;
 }
 
 export type ExportFormat = "png" | "jpg" | "svg";

@@ -1,6 +1,7 @@
 import { identityCurves } from "./adjust";
 import { getPalettePreset } from "./palettes";
 import { mergeDefaults } from "../merge-defaults";
+import { normalizeFilters } from "./filters";
 import type { DitherSettings, ExportSettings } from "./types";
 
 /** Neutral starting point; built-in presets are defined as changes on top of this. */
@@ -26,6 +27,8 @@ export function baseSettings(): DitherSettings {
       seed: 1,
     },
     palette: { presetId: "zinc", colors: [...getPalettePreset("zinc")!.colors], distance: "rgb" },
+    filters: [],
+    background: { mode: "transparent", colorA: "#111111", colorB: "#8a8a8a", size: 8 },
     gradient: {
       enabled: false,
       direction: "right",
@@ -75,6 +78,8 @@ const OFFICIAL: DitherSettings = {
     colors: ["#27272a", "#3f3f46", "#52525b", "#60ffd3", "#18181b"],
     distance: "rgb",
   },
+  filters: [],
+  background: { mode: "transparent", colorA: "#111111", colorB: "#8a8a8a", size: 8 },
   gradient: {
     enabled: false,
     direction: "right",
@@ -115,5 +120,8 @@ const NULLABLE_SETTINGS = new Set(["palette.presetId"]);
  * neutral base and drops corrupt values, while keeping legitimate nulls.
  */
 export function completeSettings(raw: unknown): DitherSettings {
-  return mergeDefaults(baseSettings(), raw, NULLABLE_SETTINGS);
+  const settings = mergeDefaults(baseSettings(), raw, NULLABLE_SETTINGS);
+  // Arrays pass through mergeDefaults untouched; filters need item-level validation.
+  settings.filters = normalizeFilters(settings.filters);
+  return settings;
 }

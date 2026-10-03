@@ -10,13 +10,20 @@ interface SectionProps {
   /** Extra controls shown in the header, just left of the chevron. */
   actions?: React.ReactNode;
   defaultOpen?: boolean;
+  /** Controlled open state, for sections that open themselves (e.g. after adding an item). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
 }
 
-export function Section({ title, icon, actions, defaultOpen = true, children }: SectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
+export function Section({ title, icon, actions, defaultOpen = true, open: controlled, onOpenChange, children }: SectionProps) {
+  const [uncontrolled, setUncontrolled] = useState(defaultOpen);
+  const open = controlled ?? uncontrolled;
   const bodyId = useId();
-  const toggle = () => setOpen((o) => !o);
+  const toggle = () => {
+    setUncontrolled(!open);
+    onOpenChange?.(!open);
+  };
 
   return (
     <section className="border-b border-border">

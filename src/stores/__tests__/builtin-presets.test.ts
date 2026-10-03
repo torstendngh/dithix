@@ -62,6 +62,9 @@ describe("official dithix preset", () => {
     dither: { algorithm: "bayer8", strength: 1, spreadMode: "fixed", spread: 64, bias: 0, transpose: false, serpentine: true, seed: 1 },
     palette: { presetId: "zinc-mint", colors: ["#27272a", "#3f3f46", "#52525b", "#60ffd3", "#18181b"], distance: "rgb" },
     gradient: { enabled: false, direction: "right", startSize: 1, endSize: 8, bands: 6, from: 0, to: 1, fadeIn: false, scatter: 0.35, seed: 1 },
+    // Added after the export; neutral so the look is unchanged.
+    filters: [],
+    background: { mode: "transparent", colorA: "#111111", colorB: "#8a8a8a", size: 8 },
   };
 
   const official = () => BUILTIN_PRESETS.find((p) => p.name === "dithix")!;

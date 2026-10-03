@@ -3,7 +3,9 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { IDENTITY_CURVE } from "@/lib/dither/adjust";
 import { completeSettings, defaultExportSettings, defaultSettings } from "@/lib/dither/defaults";
+import { defaultParams, getFilter, MAX_FILTERS } from "@/lib/dither/filters";
 import { getPalettePreset } from "@/lib/dither/palettes";
+import { newId } from "@/lib/new-id";
 import type {
   AdjustSettings,
   ColorDistance,
@@ -11,6 +13,7 @@ import type {
   CurvePoint,
   DitherOptions,
   DitherSettings,
+  BackgroundSettings,
   ExportSettings,
   GradientSettings,
   ResizeSettings,
@@ -29,6 +32,14 @@ interface SettingsState {
   resetCurves: (channel?: CurveChannel) => void;
   setDither: (patch: Partial<DitherOptions>) => void;
   setGradient: (patch: Partial<GradientSettings>) => void;
+  /** Appends a filter with default params; returns its id (or null at the limit / unknown type). */
+  addFilter: (type: string) => string | null;
+  removeFilter: (id: string) => void;
+  moveFilter: (id: string, direction: -1 | 1) => void;
+  setFilterEnabled: (id: string, enabled: boolean) => void;
+  setFilterParam: (id: string, key: string, value: number) => void;
+  clearFilters: () => void;
+  setBackground: (patch: Partial<BackgroundSettings>) => void;
   setPalettePreset: (id: string) => void;
   setPaletteColors: (colors: string[]) => void;
   setPaletteColor: (index: number, hex: string) => void;
@@ -43,7 +54,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
-    immer((set) => ({
+    immer((set, get) => ({
       settings: defaultSettings(),
       exportSettings: defaultExportSettings(),
 
@@ -71,6 +82,46 @@ export const useSettingsStore = create<SettingsState>()(
       setGradient: (patch) =>
         set((s) => {
           Object.assign(s.settings.gradient, patch);
+        }),
+      addFilter: (type) => {
+        const def = getFilter(type);
+        if (!def || get().settings.filters.length >= MAX_FILTERS) return null;
+        const id = newId();
+        set((s) => {
+          s.settings.filters.push({ id, type, enabled: true, params: defaultParams(def) });
+        });
+        return id;
+      },
+      removeFilter: (id) =>
+        set((s) => {
+          s.settings.filters = s.settings.filters.filter((f) => f.id !== id);
+        }),
+      moveFilter: (id, direction) =>
+        set((s) => {
+          const list = s.settings.filters;
+          const i = list.findIndex((f) => f.id === id);
+          const j = i + direction;
+          if (i < 0 || j < 0 || j >= list.length) return;
+          [list[i], list[j]] = [list[j], list[i]];
+        }),
+      setFilterEnabled: (id, enabled) =>
+        set((s) => {
+          const f = s.settings.filters.find((x) => x.id === id);
+          if (f) f.enabled = enabled;
+        }),
+      setFilterParam: (id, key, value) =>
+        set((s) => {
+          const f = s.settings.filters.find((x) => x.id === id);
+          const p = f && getFilter(f.type)?.params.find((x) => x.key === key);
+          if (f && p) f.params[key] = Math.min(p.max, Math.max(p.min, value));
+        }),
+      clearFilters: () =>
+        set((s) => {
+          s.settings.filters = [];
+        }),
+      setBackground: (patch) =>
+        set((s) => {
+          Object.assign(s.settings.background, patch);
         }),
       setPalettePreset: (id) =>
         set((s) => {

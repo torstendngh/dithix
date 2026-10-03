@@ -9,6 +9,9 @@ interface UiState {
   welcomeOpen: boolean;
   openWelcome: () => void;
   closeWelcome: () => void;
+  /** Settings dialog (backup, import, storage); not persisted. */
+  settingsOpen: boolean;
+  setSettingsOpen: (open: boolean) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -24,6 +27,11 @@ export const useUiStore = create<UiState>()(
         set((s) => {
           s.welcomeOpen = false;
           s.onboarded = true;
+        }),
+      settingsOpen: false,
+      setSettingsOpen: (open) =>
+        set((s) => {
+          s.settingsOpen = open;
         }),
     })),
     {

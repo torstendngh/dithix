@@ -3,15 +3,13 @@
 import Image from "next/image";
 import { PixelIcon } from "@/components/icons/pixel-icon";
 import { Button } from "@/components/shared/button";
-import { useSettingsStore } from "@/stores/settings-store";
 import { useUiStore } from "@/stores/ui-store";
 import { pickImage } from "./actions";
 import { IconButton } from "./fields";
 import { PresetPicker } from "./preset-picker";
 
 export function SidebarHeader() {
-  const resetSettings = useSettingsStore((s) => s.resetSettings);
-  const openWelcome = useUiStore((s) => s.openWelcome);
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
 
   return (
     <>
@@ -39,20 +37,12 @@ export function SidebarHeader() {
             <kbd className="ml-1 font-mono text-2xs opacity-50">⌘O</kbd>
           </Button>
           <IconButton
-            icon="reset"
-            label="Reset all settings"
+            icon="gear"
+            label="Settings"
             variant="outline"
             size="icon"
             side="bottom"
-            onClick={resetSettings}
-          />
-          <IconButton
-            icon="info"
-            label="About dithix"
-            variant="outline"
-            size="icon"
-            side="bottom"
-            onClick={openWelcome}
+            onClick={() => setSettingsOpen(true)}
           />
         </div>
         <PresetPicker />

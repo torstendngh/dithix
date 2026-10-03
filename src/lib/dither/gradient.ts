@@ -1,4 +1,4 @@
-import { applyAdjustments } from "./adjust";
+import { prepareImage } from "./prepare";
 import { dither } from "./algorithms";
 import { PaletteMatcher, paletteRgb } from "./color";
 import { bayerMatrix, cachedMatrix, hashNoise, matrixThreshold } from "./matrices";
@@ -124,7 +124,8 @@ export function ditherGradient(
   for (const size of new Set(sizes)) {
     const w = Math.ceil(width / size);
     const h = Math.ceil(height / size);
-    const original = applyAdjustments(resample(w, h), settings.adjust);
+    // Filters and background see this band at 1/size scale, so px params stay in output pixels.
+    const original = prepareImage(resample(w, h), settings, { scale: 1 / size });
     layers.set(size, { size, width: w, original, dithered: dither(original, settings.dither, matcher) });
   }
 
