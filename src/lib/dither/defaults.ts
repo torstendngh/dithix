@@ -15,6 +15,7 @@ export function baseSettings(): DitherSettings {
       contrast: 0,
       gamma: 1,
       saturation: 0,
+      hue: 0,
       invert: false,
       curves: identityCurves(),
     },
@@ -45,6 +46,7 @@ const OFFICIAL: DitherSettings = {
     contrast: 10,
     gamma: 1,
     saturation: 0,
+    hue: 0,
     invert: false,
     curves: {
       master: [{ x: 0, y: 0 }, { x: 255, y: 255 }],

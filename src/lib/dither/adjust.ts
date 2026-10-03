@@ -116,6 +116,7 @@ export function isNeutralAdjust(a: AdjustSettings): boolean {
     a.contrast === 0 &&
     a.gamma === 1 &&
     a.saturation === 0 &&
+    a.hue === 0 &&
     !a.invert &&
     isIdentityCurve(a.curves.master) &&
     isIdentityCurve(a.curves.r) &&
@@ -125,6 +126,21 @@ export function isNeutralAdjust(a: AdjustSettings): boolean {
 }
 
 /** Applies tone, saturation, curves and invert. Returns a new buffer; alpha is kept. */
+/**
+ * Hue rotation matrix (row-major 3×3), the one CSS `hue-rotate()` uses: rotates around the grey
+ * axis with luminance weights, so colours swap hue while keeping roughly their brightness.
+ */
+export function hueMatrix(degrees: number): number[] {
+  const rad = (degrees * Math.PI) / 180;
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  return [
+    0.213 + c * 0.787 - s * 0.213, 0.715 - c * 0.715 - s * 0.715, 0.072 - c * 0.072 + s * 0.928,
+    0.213 - c * 0.213 + s * 0.143, 0.715 + c * 0.285 + s * 0.14, 0.072 - c * 0.072 - s * 0.283,
+    0.213 - c * 0.213 - s * 0.787, 0.715 - c * 0.715 + s * 0.715, 0.072 + c * 0.928 + s * 0.072,
+  ];
+}
+
 export function applyAdjustments(src: PixelBuffer, a: AdjustSettings): PixelBuffer {
   const out = new Uint8ClampedArray(src.data);
   if (isNeutralAdjust(a)) return { width: src.width, height: src.height, data: out };
@@ -143,6 +159,8 @@ export function applyAdjustments(src: PixelBuffer, a: AdjustSettings): PixelBuff
   });
   const sat = 1 + a.saturation / 100;
   const doSat = a.saturation !== 0;
+  const doHue = a.hue !== 0;
+  const hm = hueMatrix(a.hue);
 
   for (let p = 0; p < out.length; p += 4) {
     let r = tone[out[p]];
@@ -153,6 +171,14 @@ export function applyAdjustments(src: PixelBuffer, a: AdjustSettings): PixelBuff
       r = clamp255(l + (r - l) * sat);
       g = clamp255(l + (g - l) * sat);
       b = clamp255(l + (b - l) * sat);
+    }
+    if (doHue) {
+      const r0 = r;
+      const g0 = g;
+      // Rounded: rows sum to exactly 1, but float error would otherwise truncate greys down by 1.
+      r = clamp255(Math.round(hm[0] * r0 + hm[1] * g0 + hm[2] * b));
+      g = clamp255(Math.round(hm[3] * r0 + hm[4] * g0 + hm[5] * b));
+      b = clamp255(Math.round(hm[6] * r0 + hm[7] * g0 + hm[8] * b));
     }
     out[p] = post[0][r | 0];
     out[p + 1] = post[1][g | 0];

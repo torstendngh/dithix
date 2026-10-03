@@ -10,6 +10,7 @@ import { MAX_PALETTE_COLORS, useSettingsStore } from "@/stores/settings-store";
 import { usePaletteStore } from "@/stores/palette-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { FieldRow, Segmented } from "../fields";
+import { ColorPicker } from "../color-picker";
 import { LibraryPicker } from "../library-picker";
 import { Section } from "../section";
 
@@ -37,23 +38,24 @@ function Swatch({ color, index, removable }: { color: string; index: number; rem
   const removePaletteColor = useSettingsStore((s) => s.removePaletteColor);
   return (
     <div className="group relative size-7">
-      <label
-        className="block size-full cursor-pointer border border-zinc-700 outline-none hover:border-zinc-300 has-focus-visible:border-zinc-100"
-        style={{ background: color }}
-        title={`${color} — click to edit${removable ? ", right-click to remove" : ""}`}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          if (removable) removePaletteColor(index);
-        }}
-      >
-        <input
-          type="color"
-          value={color}
-          onChange={(e) => setPaletteColor(index, e.target.value)}
-          className="sr-only"
-          aria-label={`Palette colour ${index + 1}`}
-        />
-      </label>
+      <ColorPicker
+        value={color}
+        onChange={(hex) => setPaletteColor(index, hex)}
+        label={`Palette colour ${index + 1}`}
+        trigger={
+          <button
+            type="button"
+            aria-label={`Palette colour ${index + 1}: ${color}`}
+            className="block size-full cursor-pointer border border-zinc-700 outline-none hover:border-zinc-300 focus-visible:border-zinc-100 data-popup-open:border-zinc-100"
+            style={{ background: color }}
+            title={`${color} — click to edit${removable ? ", right-click to remove" : ""}`}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              if (removable) removePaletteColor(index);
+            }}
+          />
+        }
+      />
       {removable && (
         <button
           type="button"

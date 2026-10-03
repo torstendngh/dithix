@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
+import { isHex } from "@/lib/dither/color";
+
+export const MAX_RECENT_COLORS = 16;
 
 interface UiState {
   /** Whether the welcome dialog has been dismissed on this device. */
@@ -12,6 +15,9 @@ interface UiState {
   /** Settings dialog (backup, import, storage); not persisted. */
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
+  /** Colours picked in the colour picker, newest first. */
+  recentColors: string[];
+  addRecentColor: (hex: string) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -33,16 +39,26 @@ export const useUiStore = create<UiState>()(
         set((s) => {
           s.settingsOpen = open;
         }),
+      recentColors: [],
+      addRecentColor: (hex) =>
+        set((s) => {
+          const c = hex.toLowerCase();
+          s.recentColors = [c, ...s.recentColors.filter((x) => x !== c)].slice(0, MAX_RECENT_COLORS);
+        }),
     })),
     {
       name: "dithix:ui",
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ onboarded: s.onboarded }),
+      partialize: (s) => ({ onboarded: s.onboarded, recentColors: s.recentColors }),
       // Returning visitors start with the dialog closed.
       merge: (persisted, current) => {
-        const onboarded = (persisted as Partial<UiState> | undefined)?.onboarded === true;
-        return { ...current, onboarded, welcomeOpen: !onboarded };
+        const p = persisted as Partial<UiState> | undefined;
+        const onboarded = p?.onboarded === true;
+        const recentColors = Array.isArray(p?.recentColors)
+          ? p.recentColors.filter(isHex).map((c) => c.toLowerCase()).slice(0, MAX_RECENT_COLORS)
+          : [];
+        return { ...current, onboarded, welcomeOpen: !onboarded, recentColors };
       },
     },
   ),

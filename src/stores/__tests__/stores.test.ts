@@ -3,7 +3,7 @@ import { defaultSettings } from "@/lib/dither/defaults";
 import { getPalettePreset } from "@/lib/dither/palettes";
 import { BUILTIN_PRESETS, usePresetStore } from "../preset-store";
 import { MAX_PALETTE_COLORS, useSettingsStore } from "../settings-store";
-import { useUiStore } from "../ui-store";
+import { MAX_RECENT_COLORS, useUiStore } from "../ui-store";
 import { currentView, useWorkspaceStore } from "../workspace-store";
 
 const settings = () => useSettingsStore.getState().settings;
@@ -226,6 +226,29 @@ describe("workspace store view", () => {
   });
 });
 
+describe("ui store (recent colours)", () => {
+  const ui = () => useUiStore.getState();
+  beforeEach(() => useUiStore.setState({ recentColors: [] }));
+
+  it("keeps newest first, without duplicates, up to the limit", () => {
+    ui().addRecentColor("#FF0000");
+    ui().addRecentColor("#00ff00");
+    ui().addRecentColor("#ff0000");
+    expect(ui().recentColors).toEqual(["#ff0000", "#00ff00"]);
+    for (let i = 0; i < 40; i++) ui().addRecentColor(`#0000${i.toString(16).padStart(2, "0")}`);
+    expect(ui().recentColors).toHaveLength(MAX_RECENT_COLORS);
+    expect(ui().recentColors[0]).toBe("#000027");
+  });
+
+  it("persists and drops junk when loading", async () => {
+    ui().addRecentColor("#123456");
+    expect(JSON.parse(localStorage.getItem("dithix:ui")!).state.recentColors).toEqual(["#123456"]);
+    localStorage.setItem("dithix:ui", JSON.stringify({ version: 1, state: { recentColors: ["#ABCDEF", 3, "nope", null] } }));
+    await useUiStore.persist.rehydrate();
+    expect(ui().recentColors).toEqual(["#abcdef"]);
+  });
+});
+
 describe("ui store (welcome dialog)", () => {
   const ui = () => useUiStore.getState();
 
@@ -239,7 +262,7 @@ describe("ui store (welcome dialog)", () => {
   it("closing marks onboarded and persists it", () => {
     ui().closeWelcome();
     expect(ui()).toMatchObject({ welcomeOpen: false, onboarded: true });
-    expect(JSON.parse(localStorage.getItem("dithix:ui")!).state).toEqual({ onboarded: true });
+    expect(JSON.parse(localStorage.getItem("dithix:ui")!).state).toMatchObject({ onboarded: true });
   });
 
   it("returning visitors start closed but can reopen it", async () => {

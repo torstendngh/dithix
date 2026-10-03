@@ -5,26 +5,32 @@ import { Switch } from "@/components/shared/switch";
 import { cn } from "@/lib/tailwind-utils";
 import { useSettingsStore } from "@/stores/settings-store";
 import { FieldRow, SliderField } from "../fields";
+import { ColorPicker } from "../color-picker";
 import { PatternEditor } from "../pattern-editor";
 import { Section } from "../section";
 
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (hex: string) => void }) {
+  // Palette colours as quick picks: a background in palette colours survives the dither intact.
+  const palette = useSettingsStore((s) => s.settings.palette.colors);
   return (
     <FieldRow label={label}>
-      <label
-        className="flex h-6 cursor-pointer items-center gap-2 border border-zinc-700 pr-2 hover:border-zinc-500 has-focus-visible:border-zinc-100"
-        title="Click to pick a colour"
-      >
-        <span className="h-full w-6 border-r border-zinc-700" style={{ background: value }} />
-        <span className="text-zinc-300 tabular-nums">{value}</span>
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="sr-only"
-          aria-label={label}
-        />
-      </label>
+      <ColorPicker
+        value={value}
+        onChange={onChange}
+        label={label}
+        palette={palette}
+        trigger={
+          <button
+            type="button"
+            aria-label={`${label}: ${value}`}
+            className="flex h-6 cursor-pointer items-center gap-2 border border-zinc-700 pr-2 outline-none hover:border-zinc-500 focus-visible:border-zinc-100 data-popup-open:border-zinc-400"
+            title="Click to pick a colour"
+          >
+            <span className="h-full w-6 border-r border-zinc-700" style={{ background: value }} />
+            <span className="text-zinc-300 tabular-nums">{value}</span>
+          </button>
+        }
+      />
     </FieldRow>
   );
 }

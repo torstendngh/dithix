@@ -19,7 +19,7 @@ export function AdjustPanel() {
           icon="reset"
           label="Reset adjustments"
           size="icon-xs"
-          onClick={() => setAdjust({ brightness: 0, contrast: 0, gamma: 1, saturation: 0, invert: false })}
+          onClick={() => setAdjust({ brightness: 0, contrast: 0, gamma: 1, saturation: 0, hue: 0, invert: false })}
         />
       }
     >
@@ -55,6 +55,15 @@ export function AdjustPanel() {
         min={-100}
         max={100}
         defaultValue={0}
+      />
+      <SliderField
+        label="Hue"
+        value={adjust.hue}
+        onChange={(hue) => setAdjust({ hue })}
+        min={-180}
+        max={180}
+        defaultValue={0}
+        unit="°"
       />
       <FieldRow label="Invert">
         <Switch

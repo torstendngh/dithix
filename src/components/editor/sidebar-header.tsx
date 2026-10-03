@@ -14,7 +14,18 @@ export function SidebarHeader() {
   return (
     <>
       {/* Scrolls away with the panels. */}
-      <h1 className="flex justify-center px-3 pt-4 pb-1">
+      <h1 className="relative isolate flex justify-center overflow-hidden px-3 pt-4 pb-1">
+        {/* Decorative backdrop: covers the header, dimmed so the logo reads, fading out at the bottom. */}
+        <Image
+          src="/bg.png"
+          alt=""
+          aria-hidden
+          fill
+          sizes="320px"
+          preload
+          className="pointer-events-none -z-10 object-cover select-none mask-b-from-0% opacity-50"
+          draggable={false}
+        />
         <Image
           src="/logo-2.png"
           alt="dithix"

@@ -205,7 +205,7 @@ export function LibraryPicker({
   if (naming) {
     return (
       <form
-        className="flex gap-1"
+        className="flex min-w-0 gap-1"
         onSubmit={(e) => {
           e.preventDefault();
           save();
@@ -234,7 +234,8 @@ export function LibraryPicker({
   }
 
   return (
-    <div className="flex gap-1">
+    // min-w-0: as a grid child it would otherwise grow to fit a long name instead of truncating it.
+    <div className="flex min-w-0 gap-1">
       {/* Trigger and arrows overlap by 1px; whichever is hovered, focused or open is lifted. */}
       <div className="flex min-w-0 flex-1">
         <Popover open={open} onOpenChange={setOpen}>

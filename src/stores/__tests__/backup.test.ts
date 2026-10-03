@@ -118,6 +118,16 @@ describe("storageUsage", () => {
     localStorage.clear(); // the stores' setState in beforeEach writes their own keys
     localStorage.setItem("dithix:a", "12345");
     localStorage.setItem("other", "x".repeat(1000));
-    expect(storageUsage()).toEqual({ keys: ["dithix:a"], bytes: ("dithix:a".length + 5) * 2 });
+    localStorage.setItem("dithix:b", "1");
+    const a = ("dithix:a".length + 5) * 2;
+    const b = ("dithix:b".length + 1) * 2;
+    expect(storageUsage()).toEqual({
+      keys: ["dithix:a", "dithix:b"],
+      bytes: a + b,
+      items: [
+        { key: "dithix:a", bytes: a },
+        { key: "dithix:b", bytes: b },
+      ],
+    });
   });
 });

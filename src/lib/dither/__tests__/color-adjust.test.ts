@@ -108,6 +108,18 @@ describe("tone & adjustments", () => {
     expect(gray[1]).toBe(gray[2]);
   });
 
+  it("hue rotates colours round the wheel, keeps greys and is neutral at ±0", () => {
+    const px = (rgb: [number, number, number], hue: number) => [...applyAdjustments(solid(1, 1, [...rgb, 255]), adjust({ hue })).data.slice(0, 3)];
+    const [r, g, b] = px([200, 30, 30], 120); // red → green
+    expect(g).toBeGreaterThan(r);
+    expect(g).toBeGreaterThan(b);
+    const [r2, g2, b2] = px([200, 30, 30], -120); // red → blue
+    expect(b2).toBeGreaterThan(r2);
+    expect(b2).toBeGreaterThan(g2);
+    expect(px([128, 128, 128], 90)).toEqual([128, 128, 128]);
+    expect(px([200, 30, 30], 360 - 360)).toEqual([200, 30, 30]);
+  });
+
   it("applies the master curve to all channels", () => {
     const curves = identityCurves();
     curves.master = [

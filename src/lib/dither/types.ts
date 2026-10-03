@@ -42,6 +42,8 @@ export interface AdjustSettings {
   gamma: number;
   /** -100..100, -100 = grayscale */
   saturation: number;
+  /** Hue rotation in degrees, -180..180. */
+  hue: number;
   invert: boolean;
   curves: Curves;
 }

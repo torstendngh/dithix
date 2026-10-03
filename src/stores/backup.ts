@@ -95,15 +95,22 @@ export function parseBackup(text: string): ParseResult {
 }
 
 /** Byte size of everything dithix keeps in localStorage. */
-export function storageUsage(storage: Storage = localStorage): { keys: string[]; bytes: number } {
-  const keys: string[] = [];
-  let bytes = 0;
+export function storageUsage(storage: Storage = localStorage): {
+  keys: string[];
+  bytes: number;
+  /** Size of each key, largest first. */
+  items: { key: string; bytes: number }[];
+} {
+  const items: { key: string; bytes: number }[] = [];
   for (let i = 0; i < storage.length; i++) {
     const key = storage.key(i);
     if (!key?.startsWith("dithix:")) continue;
-    keys.push(key);
     // UTF-16 code units, which is how browsers count the quota.
-    bytes += (key.length + (storage.getItem(key)?.length ?? 0)) * 2;
+    items.push({ key, bytes: (key.length + (storage.getItem(key)?.length ?? 0)) * 2 });
   }
-  return { keys: keys.sort(), bytes };
+  return {
+    keys: items.map((x) => x.key).sort(),
+    bytes: items.reduce((sum, x) => sum + x.bytes, 0),
+    items: items.sort((a, b) => b.bytes - a.bytes),
+  };
 }

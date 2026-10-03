@@ -69,7 +69,7 @@ describe("official dithix preset", () => {
   const deepslate = {
     resize: { mode: "height", scale: 36, width: 512, height: 256, filter: "area" },
     adjust: {
-      brightness: 0, contrast: 10, gamma: 1, saturation: 0, invert: false,
+      brightness: 0, contrast: 10, gamma: 1, saturation: 0, hue: 0, invert: false,
       curves: {
         master: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
         r: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
