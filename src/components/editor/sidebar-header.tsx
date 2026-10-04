@@ -10,35 +10,53 @@ import { PresetPicker } from "./preset-picker";
 
 export function SidebarHeader() {
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
+  const showLogo = useUiStore((s) => s.showLogo);
 
   return (
     <>
       {/* Scrolls away with the panels. */}
-      <h1 className="relative isolate flex justify-center overflow-hidden px-3 pt-4 pb-1">
-        {/* Decorative backdrop: covers the header, dimmed so the logo reads, fading out at the bottom. */}
-        <Image
-          src="/bg.png"
-          alt=""
-          aria-hidden
-          fill
-          sizes="320px"
-          preload
-          className="pointer-events-none -z-10 object-cover select-none mask-b-from-0% opacity-50"
-          draggable={false}
-        />
-        <Image
-          src="/logo-2.png"
-          alt="dithix"
-          width={1816}
-          height={1024}
-          // Pixel art on an 8px grid (227×128 art pixels): skip the optimiser's smooth resize and
-          // show it at exactly 227px so each art pixel maps to one CSS pixel, kept crisp.
-          unoptimized
-          preload
-          className="h-auto w-[227px] max-w-full select-none [image-rendering:pixelated]"
-          draggable={false}
-        />
-      </h1>
+      {showLogo ? (
+        <h1 className="relative isolate flex justify-center overflow-hidden px-3 pt-4 pb-1">
+          {/* Decorative backdrop: covers the header, dimmed so the logo reads, fading out at the bottom. */}
+          <Image
+            src="/bg.png"
+            alt=""
+            aria-hidden
+            fill
+            sizes="320px"
+            preload
+            className="pointer-events-none -z-10 object-cover select-none mask-b-from-0% opacity-50"
+            draggable={false}
+          />
+          <Image
+            src="/mascot.png"
+            alt="dithix"
+            width={1816}
+            height={1024}
+            // Pixel art on an 8px grid (227×128 art pixels): skip the optimiser's smooth resize and
+            // show it at exactly 227px so each art pixel maps to one CSS pixel, kept crisp.
+            unoptimized
+            preload
+            className="size-32 absolute -z-5 top-4 max-w-full select-none [image-rendering:pixelated] motion-safe:animate-float"
+            draggable={false}
+          />
+          <Image
+            src="/logo-2.png"
+            alt="dithix"
+            width={1816}
+            height={1024}
+            // Pixel art on an 8px grid (227×128 art pixels): skip the optimiser's smooth resize and
+            // show it at exactly 227px so each art pixel maps to one CSS pixel, kept crisp.
+            unoptimized
+            preload
+            className="h-auto w-[227px] max-w-full mt-12 select-none [image-rendering:pixelated] z-10"
+            draggable={false}
+          />
+        </h1>
+      ) : (
+        // Keep a page heading for screen readers when the banner is hidden.
+        <h1 className="sr-only">dithix</h1>
+      )}
       {/* Pins to the top of the sidebar once the logo has scrolled past. */}
       <div className="sticky top-0 z-30 grid gap-1 border-b border-border bg-background/95 px-3 py-3 backdrop-blur">
         <div className="flex gap-1">

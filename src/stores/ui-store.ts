@@ -18,6 +18,9 @@ interface UiState {
   /** Colours picked in the colour picker, newest first. */
   recentColors: string[];
   addRecentColor: (hex: string) => void;
+  /** Whether the logo banner shows at the top of the sidebar. */
+  showLogo: boolean;
+  setShowLogo: (show: boolean) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -45,12 +48,17 @@ export const useUiStore = create<UiState>()(
           const c = hex.toLowerCase();
           s.recentColors = [c, ...s.recentColors.filter((x) => x !== c)].slice(0, MAX_RECENT_COLORS);
         }),
+      showLogo: true,
+      setShowLogo: (show) =>
+        set((s) => {
+          s.showLogo = show;
+        }),
     })),
     {
       name: "dithix:ui",
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ onboarded: s.onboarded, recentColors: s.recentColors }),
+      partialize: (s) => ({ onboarded: s.onboarded, recentColors: s.recentColors, showLogo: s.showLogo }),
       // Returning visitors start with the dialog closed.
       merge: (persisted, current) => {
         const p = persisted as Partial<UiState> | undefined;
@@ -58,7 +66,8 @@ export const useUiStore = create<UiState>()(
         const recentColors = Array.isArray(p?.recentColors)
           ? p.recentColors.filter(isHex).map((c) => c.toLowerCase()).slice(0, MAX_RECENT_COLORS)
           : [];
-        return { ...current, onboarded, welcomeOpen: !onboarded, recentColors };
+        const showLogo = p?.showLogo !== false;
+        return { ...current, onboarded, welcomeOpen: !onboarded, recentColors, showLogo };
       },
     },
   ),

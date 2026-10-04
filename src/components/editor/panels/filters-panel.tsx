@@ -136,7 +136,7 @@ function AddFilterMenu({ onAdded }: { onAdded: () => void }) {
         disabled={full}
         className="grid size-6 place-items-center text-zinc-400 outline-none hover:bg-zinc-900 hover:text-zinc-100 focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-40 data-popup-open:bg-zinc-800 data-popup-open:text-zinc-100"
       >
-        <PixelIcon name="plus" scale={1} />
+        <PixelIcon name="plus" />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 pb-1" aria-label="Filters to add">
         {FILTER_CATEGORIES.map((cat) => (

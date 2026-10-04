@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { PixelIcon, type IconName } from "@/components/icons/pixel-icon";
 import { Button } from "@/components/shared/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/shared/dialog";
+import { Switch } from "@/components/shared/switch";
 import { downloadBlob } from "@/lib/image-io";
 import { cn } from "@/lib/tailwind-utils";
 import {
@@ -528,9 +529,11 @@ const SHORTCUTS: [string, string][] = [
 function AboutTab() {
   const openWelcome = useUiStore((s) => s.openWelcome);
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
+  const showLogo = useUiStore((s) => s.showLogo);
+  const setShowLogo = useUiStore((s) => s.setShowLogo);
   return (
     <div className="grid gap-6">
-      <div className="border-y border-zinc-800">
+      <div className="grid divide-y divide-zinc-800 border-y border-zinc-800">
         <ActionRow title="Welcome screen" description="Show the intro you saw on your first visit.">
           <Button
             variant="outline"
@@ -543,6 +546,9 @@ function AboutTab() {
             <PixelIcon name="info" scale={1} />
             Show
           </Button>
+        </ActionRow>
+        <ActionRow title="Sidebar logo" description="Show the dithix logo and mascot above the sidebar controls.">
+          <Switch aria-label="Show sidebar logo" checked={showLogo} onCheckedChange={setShowLogo} />
         </ActionRow>
       </div>
       <div className="grid gap-2">
@@ -586,6 +592,15 @@ export function SettingsDialog() {
           <div className="relative hidden h-24 overflow-hidden border-b border-zinc-800 sm:block">
             <Image src="/bg.png" alt="" fill sizes="192px" className="object-cover brightness-[0.4] saturate-[0.9]" draggable={false} />
             <div className="absolute inset-0 bg-linear-to-b from-transparent to-zinc-950/90" />
+            <Image
+              src="/mascot.png"
+              alt=""
+              width={640}
+              height={640}
+              unoptimized
+              className="absolute top-2 left-1/2 size-16 -translate-x-1/2 select-none [image-rendering:pixelated] motion-safe:animate-float"
+              draggable={false}
+            />
             <div className="absolute inset-x-3 bottom-2.5 flex items-baseline justify-between">
               <span className="text-zinc-100">Settings</span>
               <span className="text-2xs text-zinc-500">v0.1</span>
