@@ -29,15 +29,14 @@ export function SidebarHeader() {
             draggable={false}
           />
           <Image
-            src="/mascot.png"
+            src="/mascot-2.gif"
             alt="dithix"
-            width={1816}
-            height={1024}
-            // Pixel art on an 8px grid (227×128 art pixels): skip the optimiser's smooth resize and
-            // show it at exactly 227px so each art pixel maps to one CSS pixel, kept crisp.
+            width={128}
+            height={128}
+            // Animated 128×128 pixel art, shown 1:1; the optimiser would flatten the GIF and blur it.
             unoptimized
             preload
-            className="size-32 absolute -z-5 top-4 max-w-full select-none [image-rendering:pixelated] motion-safe:animate-float"
+            className="size-32 absolute -z-5 top-4 max-w-full mask-b-from-50% select-none [image-rendering:pixelated] motion-safe:animate-float"
             draggable={false}
           />
           <Image

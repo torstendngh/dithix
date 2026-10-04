@@ -57,7 +57,7 @@ export function ExportPanel() {
   const frames = frameCount(motion);
 
   return (
-    <Section title="Export" icon="download">
+    <Section id="export" title="Export" icon="download">
       <div role="group" aria-label="Export format" className="flex w-full">
         {FORMATS.map((f, i) => {
           const unavailable = f.animated && (!motion.enabled || (f.value === "mp4" && mp4 === false));

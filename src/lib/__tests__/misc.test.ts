@@ -91,10 +91,10 @@ describe("deepEqual", () => {
 });
 
 describe("pixel icons", () => {
-  it("are all 8×8", () => {
+  it("are all square, 8×8 or 7×7", () => {
     for (const [name, grid] of Object.entries(ICONS)) {
-      expect(grid, name).toHaveLength(8);
-      for (const row of grid) expect(row, name).toHaveLength(8);
+      expect([7, 8], name).toContain(grid.length);
+      for (const row of grid) expect(row, name).toHaveLength(grid.length);
     }
   });
 

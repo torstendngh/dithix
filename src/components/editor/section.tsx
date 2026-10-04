@@ -1,29 +1,26 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId } from "react";
 import { PixelIcon, type IconName } from "@/components/icons/pixel-icon";
 import { cn } from "@/lib/tailwind-utils";
+import { useUiStore } from "@/stores/ui-store";
 
 interface SectionProps {
+  /** Stable key for the open state (the title can change). */
+  id: string;
   title: string;
   icon: IconName;
   /** Extra controls shown in the header, just left of the chevron. */
   actions?: React.ReactNode;
-  defaultOpen?: boolean;
-  /** Controlled open state, for sections that open themselves (e.g. after adding an item). */
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
 }
 
-export function Section({ title, icon, actions, defaultOpen = true, open: controlled, onOpenChange, children }: SectionProps) {
-  const [uncontrolled, setUncontrolled] = useState(defaultOpen);
-  const open = controlled ?? uncontrolled;
+/** Collapsible sidebar section. Open state lives in the UI store, which keeps one open at a time unless the user allows more. */
+export function Section({ id, title, icon, actions, children }: SectionProps) {
+  const open = useUiStore((s) => s.openSections.includes(id));
+  const setSectionOpen = useUiStore((s) => s.setSectionOpen);
   const bodyId = useId();
-  const toggle = () => {
-    setUncontrolled(!open);
-    onOpenChange?.(!open);
-  };
+  const toggle = () => setSectionOpen(id, !open);
 
   return (
     <section className="border-b border-border">

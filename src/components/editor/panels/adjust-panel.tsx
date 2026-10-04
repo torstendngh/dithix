@@ -11,8 +11,8 @@ export function AdjustPanel() {
 
   return (
     <Section
+      id="adjust"
       title="Adjust"
-      defaultOpen={false}
       icon="adjust"
       actions={
         <IconButton

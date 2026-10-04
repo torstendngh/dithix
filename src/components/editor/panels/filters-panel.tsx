@@ -10,6 +10,7 @@ import { bandSizes } from "@/lib/dither/gradient";
 import type { FilterInstance } from "@/lib/dither/types";
 import { cn } from "@/lib/tailwind-utils";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useUiStore } from "@/stores/ui-store";
 import { FieldRow, IconButton, Segmented, SliderField } from "../fields";
 import { Section } from "../section";
 
@@ -172,21 +173,20 @@ function AddFilterMenu({ onAdded }: { onAdded: () => void }) {
 export function FiltersPanel() {
   const filters = useSettingsStore((s) => s.settings.filters);
   const clearFilters = useSettingsStore((s) => s.clearFilters);
-  const [open, setOpen] = useState(true);
+  const setSectionOpen = useUiStore((s) => s.setSectionOpen);
   const active = filters.filter((f) => f.enabled).length;
 
   return (
     <Section
+      id="filters"
       title={filters.length ? `Filters · ${active}/${filters.length}` : "Filters"}
       icon="funnel"
-      open={open}
-      onOpenChange={setOpen}
       actions={
         <>
           {filters.length > 0 && (
             <IconButton icon="trash" label="Remove all filters" size="icon-xs" onClick={clearFilters} />
           )}
-          <AddFilterMenu onAdded={() => setOpen(true)} />
+          <AddFilterMenu onAdded={() => setSectionOpen("filters", true)} />
         </>
       }
     >

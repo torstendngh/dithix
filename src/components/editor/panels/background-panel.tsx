@@ -43,9 +43,9 @@ export function BackgroundPanel() {
 
   return (
     <Section
+      id="background"
       title="Background"
       icon="background"
-      defaultOpen={false}
       actions={
         <Switch
           aria-label="Enable background"

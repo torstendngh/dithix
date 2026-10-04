@@ -1,14 +1,17 @@
 import { cn } from "@/lib/tailwind-utils";
 import { gridToRuns, ICONS, type IconName } from "./pixel-icons";
 
-const RUNS = Object.fromEntries(
+const PATHS = Object.fromEntries(
   Object.entries(ICONS).map(([name, grid]) => [
     name,
-    gridToRuns(grid)
-      .map(([x, y, w]) => `M${x} ${y}h${w}v1h-${w}z`)
-      .join(""),
+    {
+      size: grid.length,
+      d: gridToRuns(grid)
+        .map(([x, y, w]) => `M${x} ${y}h${w}v1h-${w}z`)
+        .join(""),
+    },
   ]),
-) as Record<IconName, string>;
+) as Record<IconName, { size: number; d: string }>;
 
 interface PixelIconProps extends React.SVGProps<SVGSVGElement> {
   name: IconName;
@@ -17,19 +20,19 @@ interface PixelIconProps extends React.SVGProps<SVGSVGElement> {
 }
 
 function PixelIcon({ name, scale = 2, className, ...props }: PixelIconProps) {
-  const size = 8 * scale;
+  const { size, d } = PATHS[name];
   return (
     <svg
       data-slot="pixel-icon"
-      viewBox="0 0 8 8"
-      width={size}
-      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      width={size * scale}
+      height={size * scale}
       shapeRendering="crispEdges"
       aria-hidden="true"
       className={cn("shrink-0", className)}
       {...props}
     >
-      <path d={RUNS[name]} fill="currentColor" />
+      <path d={d} fill="currentColor" />
     </svg>
   );
 }

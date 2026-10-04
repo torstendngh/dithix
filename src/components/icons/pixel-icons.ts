@@ -1,6 +1,7 @@
 /**
  * Pixel-art icon bitmaps. '#' = filled pixel, anything else = empty.
- * Every icon is 8×8 so it renders crisp at integer scales.
+ * Icons are square, 8×8 or 7×7 (odd sizes give center-heavy shapes a 1px middle), so they render
+ * crisp at integer scales.
  */
 
 type Grid = string[];
@@ -128,24 +129,22 @@ export const ICONS = {
     "########",
   ],
   plus: [
-    "........",
-    "...##...",
-    "...##...",
-    ".######.",
-    ".######.",
-    "...##...",
-    "...##...",
-    "........",
+    ".......",
+    "...#...",
+    "...#...",
+    ".#####.",
+    "...#...",
+    "...#...",
+    ".......",
   ],
   minus: [
-    "........",
-    "........",
-    "........",
-    ".######.",
-    ".######.",
-    "........",
-    "........",
-    "........",
+    ".......",
+    ".......",
+    ".......",
+    ".#####.",
+    ".......",
+    ".......",
+    ".......",
   ],
   close: [
     "........",

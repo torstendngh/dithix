@@ -21,6 +21,12 @@ interface UiState {
   /** Whether the logo banner shows at the top of the sidebar. */
   showLogo: boolean;
   setShowLogo: (show: boolean) => void;
+  /** Sidebar sections currently expanded; all start closed. Not persisted. */
+  openSections: string[];
+  setSectionOpen: (id: string, open: boolean) => void;
+  /** Allow several sidebar sections open at once; otherwise opening one closes the rest. */
+  multiSections: boolean;
+  setMultiSections: (multi: boolean) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -53,12 +59,30 @@ export const useUiStore = create<UiState>()(
         set((s) => {
           s.showLogo = show;
         }),
+      openSections: [],
+      setSectionOpen: (id, open) =>
+        set((s) => {
+          const rest = s.openSections.filter((x) => x !== id);
+          s.openSections = !open ? rest : s.multiSections ? [...rest, id] : [id];
+        }),
+      multiSections: false,
+      setMultiSections: (multi) =>
+        set((s) => {
+          s.multiSections = multi;
+          // Back to one-at-a-time: keep only the most recently opened.
+          if (!multi) s.openSections = s.openSections.slice(-1);
+        }),
     })),
     {
       name: "dithix:ui",
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ onboarded: s.onboarded, recentColors: s.recentColors, showLogo: s.showLogo }),
+      partialize: (s) => ({
+        onboarded: s.onboarded,
+        recentColors: s.recentColors,
+        showLogo: s.showLogo,
+        multiSections: s.multiSections,
+      }),
       // Returning visitors start with the dialog closed.
       merge: (persisted, current) => {
         const p = persisted as Partial<UiState> | undefined;
@@ -67,7 +91,8 @@ export const useUiStore = create<UiState>()(
           ? p.recentColors.filter(isHex).map((c) => c.toLowerCase()).slice(0, MAX_RECENT_COLORS)
           : [];
         const showLogo = p?.showLogo !== false;
-        return { ...current, onboarded, welcomeOpen: !onboarded, recentColors, showLogo };
+        const multiSections = p?.multiSections === true;
+        return { ...current, onboarded, welcomeOpen: !onboarded, recentColors, showLogo, multiSections };
       },
     },
   ),

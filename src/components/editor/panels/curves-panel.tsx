@@ -144,8 +144,8 @@ export function CurvesPanel() {
 
   return (
     <Section
+      id="curves"
       title="Curves"
-      defaultOpen={false}
       icon="curve"
       actions={<IconButton icon="reset" label="Reset all curves" size="icon-xs" onClick={() => resetCurves()} />}
     >

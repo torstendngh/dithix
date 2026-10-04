@@ -59,9 +59,9 @@ export function MotionPanel() {
 
   return (
     <Section
+      id="motion"
       title="Motion"
       icon="motion"
-      defaultOpen={false}
       actions={
         <Switch aria-label="Enable motion" checked={motion.enabled} onCheckedChange={(enabled) => setMotion({ enabled })} />
       }

@@ -23,7 +23,7 @@ export function ResolutionPanel() {
   const pixelSize = source && out ? source.width / out.width : null;
 
   return (
-    <Section title="Resolution" icon="resize">
+    <Section id="resolution" title="Resolution" icon="resize">
       <Segmented
         aria-label="Resize mode"
         value={resize.mode}

@@ -34,7 +34,7 @@ export function DitherPanel() {
   const isBayer = dither.algorithm.startsWith("bayer");
 
   return (
-    <Section title="Dither" icon="dither">
+    <Section id="dither" title="Dither" icon="dither">
       <div className="grid gap-1.5">
         <span className="text-zinc-400">Bayer matrix</span>
         <Segmented

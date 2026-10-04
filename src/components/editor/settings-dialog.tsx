@@ -27,7 +27,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const formatBytes = (bytes: number) =>
   bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 
-type Tab = "backup" | "import" | "storage" | "about";
+type Tab = "interface" | "backup" | "import" | "storage" | "about";
 
 const TABS: { id: Tab; label: string; icon: IconName; title: string; description: string }[] = [
   {
@@ -36,6 +36,13 @@ const TABS: { id: Tab; label: string; icon: IconName; title: string; description
     icon: "info",
     title: "About dithix",
     description: "Dithered pixel art from any image, entirely in your browser.",
+  },
+  {
+    id: "interface",
+    label: "Interface",
+    icon: "gear",
+    title: "Interface",
+    description: "How the sidebar looks and behaves.",
   },
   {
     id: "backup",
@@ -526,14 +533,29 @@ const SHORTCUTS: [string, string][] = [
   ["+  −", "Zoom in / out"],
 ];
 
+function InterfaceTab() {
+  const showLogo = useUiStore((s) => s.showLogo);
+  const setShowLogo = useUiStore((s) => s.setShowLogo);
+  const multiSections = useUiStore((s) => s.multiSections);
+  const setMultiSections = useUiStore((s) => s.setMultiSections);
+  return (
+    <div className="grid divide-y divide-zinc-800 border-y border-zinc-800">
+      <ActionRow title="Sidebar logo" description="Show the dithix logo and mascot above the sidebar controls.">
+        <Switch aria-label="Show sidebar logo" checked={showLogo} onCheckedChange={setShowLogo} />
+      </ActionRow>
+      <ActionRow title="Multiple open panels" description="Let several sidebar panels stay open. Off: opening one closes the others.">
+        <Switch aria-label="Allow multiple open panels" checked={multiSections} onCheckedChange={setMultiSections} />
+      </ActionRow>
+    </div>
+  );
+}
+
 function AboutTab() {
   const openWelcome = useUiStore((s) => s.openWelcome);
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
-  const showLogo = useUiStore((s) => s.showLogo);
-  const setShowLogo = useUiStore((s) => s.setShowLogo);
   return (
     <div className="grid gap-6">
-      <div className="grid divide-y divide-zinc-800 border-y border-zinc-800">
+      <div className="border-y border-zinc-800">
         <ActionRow title="Welcome screen" description="Show the intro you saw on your first visit.">
           <Button
             variant="outline"
@@ -546,9 +568,6 @@ function AboutTab() {
             <PixelIcon name="info" scale={1} />
             Show
           </Button>
-        </ActionRow>
-        <ActionRow title="Sidebar logo" description="Show the dithix logo and mascot above the sidebar controls.">
-          <Switch aria-label="Show sidebar logo" checked={showLogo} onCheckedChange={setShowLogo} />
         </ActionRow>
       </div>
       <div className="grid gap-2">
@@ -593,10 +612,10 @@ export function SettingsDialog() {
             <Image src="/bg.png" alt="" fill sizes="192px" className="object-cover brightness-[0.4] saturate-[0.9]" draggable={false} />
             <div className="absolute inset-0 bg-linear-to-b from-transparent to-zinc-950/90" />
             <Image
-              src="/mascot.png"
+              src="/mascot-2.gif"
               alt=""
-              width={640}
-              height={640}
+              width={128}
+              height={128}
               unoptimized
               className="absolute top-2 left-1/2 size-16 -translate-x-1/2 select-none [image-rendering:pixelated] motion-safe:animate-float"
               draggable={false}
@@ -646,6 +665,7 @@ export function SettingsDialog() {
             {tab === "import" && <ImportTab />}
             {tab === "storage" && <StorageTab />}
             {tab === "about" && <AboutTab />}
+            {tab === "interface" && <InterfaceTab />}
           </div>
         </section>
       </DialogContent>

@@ -124,7 +124,7 @@ export function PalettePanel() {
   const [extractCount, setExtractCount] = useState(4);
 
   return (
-    <Section title="Palette" icon="palette">
+    <Section id="palette" title="Palette" icon="palette">
       <PalettePicker />
 
       <div className="flex flex-wrap gap-1.5">
