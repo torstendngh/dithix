@@ -764,6 +764,7 @@ export function normalizeFilters(raw: unknown): FilterInstance[] {
       id: typeof f.id === "string" && f.id ? f.id : `${def.type}-${out.length}`,
       type: def.type,
       enabled: f.enabled !== false,
+      animate: f.animate !== false,
       params,
     });
     if (out.length >= MAX_FILTERS) break;

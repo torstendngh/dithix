@@ -21,7 +21,7 @@ const defaultGradient = (): GradientSettings => gradientSettings(defaultParams(g
 const gradientWith = (patch: Partial<GradientSettings>): GradientSettings => ({ ...defaultGradient(), scatter: 0, ...patch });
 
 const withGradientFilter = (s: DitherSettings, g: GradientSettings, enabled = true): DitherSettings => {
-  s.filters = [...s.filters, { id: "g", type: GLITCH_GRADIENT, enabled, params: gradientParams(g) }];
+  s.filters = [...s.filters, { id: "g", type: GLITCH_GRADIENT, enabled, animate: true, params: gradientParams(g) }];
   return s;
 };
 

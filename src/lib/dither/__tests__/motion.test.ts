@@ -10,6 +10,7 @@ const inst = (type: string, params: Record<string, number> = {}): FilterInstance
   id: type,
   type,
   enabled: true,
+  animate: true,
   params: { ...defaultParams(getFilter(type)!), ...params },
 });
 
@@ -64,8 +65,37 @@ describe("settingsAtFrame", () => {
     expect(half[0].params.phase).toBe(120); // 300 + 180, wrapped
     expect(half[1].params.position).toBe(40); // band rolled half the picture
     expect(half[2].params.angle).toBe(-200);
-    s.motion.animateFilters = false;
-    expect(settingsAtFrame(s, 12, 24).filters).toEqual(s.filters);
+    // Per filter: only the wave keeps moving.
+    s.filters[1].animate = false;
+    s.filters[2].animate = false;
+    const some = settingsAtFrame(s, 12, 24).filters;
+    expect(some[0].params.phase).toBe(120);
+    expect(some.slice(1)).toEqual(s.filters.slice(1));
+  });
+
+  it("boil only re-rolls the seeds of filters with motion on", () => {
+    const s = moving({ boil: 1 });
+    s.filters = [inst("tv-glitch", { seed: 5 }), { ...inst("block-glitch", { seed: 5 }), id: "b", animate: false }];
+    const f = settingsAtFrame(s, 3, 24).filters;
+    expect(f[0].params.seed).not.toBe(5);
+    expect(f[1].params.seed).toBe(5);
+  });
+
+  it("applies keyframes before the procedural effects", () => {
+    const s = moving({ pulse: 10, keyframes: true });
+    s.motion.tracks = [{ path: "adjust.brightness", easing: "linear", keys: [{ t: 0, value: -40 }, { t: 0.5, value: 40 }] }];
+    // Quarter of the way: halfway between the keys (0), plus the pulse at its peak (+10).
+    expect(settingsAtFrame(s, 6, 24).adjust.brightness).toBeCloseTo(10);
+    expect(settingsAtFrame(s, 0, 24).adjust.brightness).toBeCloseTo(-40);
+  });
+
+  it("switches keyframes (timeline) and the procedural effects (motion) separately", () => {
+    const s = moving({ pulse: 10, keyframes: false });
+    s.motion.tracks = [{ path: "adjust.brightness", easing: "linear", keys: [{ t: 0, value: -40 }, { t: 0.5, value: 40 }] }];
+    expect(settingsAtFrame(s, 6, 24).adjust.brightness).toBeCloseTo(10); // pulse only
+    s.motion.enabled = false;
+    s.motion.keyframes = true;
+    expect(settingsAtFrame(s, 6, 24).adjust.brightness).toBeCloseTo(0); // keyframes only
   });
 });
 

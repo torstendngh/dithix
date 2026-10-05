@@ -1,9 +1,13 @@
 import { getAlgorithm } from "./algorithms";
 import { GLITCH_GRADIENT, getFilter } from "./filters";
-import type { AlgorithmId, CrawlDirection, DitherSettings, MotionSettings } from "./types";
+import { applyTracks } from "./keyframes";
+import type { AlgorithmId, CrawlDirection, DitherSettings, FilterInstance, MotionSettings } from "./types";
 
 export const MOTION_FPS = [8, 12, 15, 24, 30];
 export const MAX_FRAMES = 300;
+
+/** Whether there is a loop to render: the procedural effects, the timeline, or both. */
+export const isLooping = (m: Pick<MotionSettings, "enabled" | "keyframes">) => m.enabled || m.keyframes;
 
 /** Frames in one loop. */
 export function frameCount(m: Pick<MotionSettings, "duration" | "fps">): number {
@@ -50,15 +54,25 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 /** Distinct, deterministic seed per boil step, so "boil every 2 frames" holds each look for 2. */
 const boiled = (seed: number, step: number) => (step === 0 ? seed : (seed + step * 7919) % 99991);
 
+/** Filters whose phase the loop rolls when their motion is on. */
+const PHASED_FILTERS = new Set(["wave", "modulation", "rgb-split", "tv-glitch", "swirl", "bulge", "luma-displace", GLITCH_GRADIENT]);
+
+/** What motion does to a filter: roll its phase, re-roll its seed with boil, both, or nothing. */
+export function filterMotion(f: Pick<FilterInstance, "type" | "params">): { phase: boolean; seed: boolean } {
+  return { phase: PHASED_FILTERS.has(f.type), seed: "seed" in f.params };
+}
+
 /**
- * Settings for frame i of n. Frame 0 equals the input (apart from motion being on), so the still
- * preview and export match the start of the loop.
+ * Settings for frame i of n: keyframed values first (with the timeline on), then the procedural
+ * effects on top (with motion on). Without keyframes, frame 0 equals the input.
  */
 export function settingsAtFrame(settings: DitherSettings, i: number, n: number): DitherSettings {
   const m = settings.motion;
   const t = i / n;
   const wave = Math.sin(2 * Math.PI * t);
   const s = structuredClone(settings);
+  if (m.keyframes) applyTracks(s, t);
+  if (!m.enabled) return s;
 
   const [ox, oy] = crawlOffset(m, s.dither.algorithm, i, n);
   if (ox || oy) {
@@ -73,10 +87,9 @@ export function settingsAtFrame(settings: DitherSettings, i: number, n: number):
 
   for (const f of s.filters) {
     const def = getFilter(f.type);
-    if (!def) continue;
+    if (!def || !f.animate) continue;
     const p = f.params;
     if (step && "seed" in p) p.seed = boiled(p.seed, step);
-    if (!m.animateFilters) continue;
     switch (f.type) {
       case "wave":
       case "modulation":

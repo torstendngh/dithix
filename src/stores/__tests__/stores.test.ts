@@ -322,6 +322,45 @@ describe("filter stack", () => {
   });
 });
 
+describe("keyframes", () => {
+  const store = () => useSettingsStore.getState();
+  const tracks = () => store().settings.motion.tracks;
+
+  it("keys the current value, replaces a key at the same time, and drops a track with its last key", () => {
+    store().setAdjust({ contrast: 20 });
+    store().setKeyframe("adjust.contrast", 0);
+    store().setAdjust({ contrast: 60 });
+    store().setKeyframe("adjust.contrast", 0.5);
+    store().setKeyframe("adjust.contrast", 0.5);
+    expect(tracks()).toEqual([
+      { path: "adjust.contrast", easing: "smooth", keys: [{ t: 0, value: 20 }, { t: 0.5, value: 60 }] },
+    ]);
+    store().moveKeyframe("adjust.contrast", 0.5, 0.75);
+    store().setTrackEasing("adjust.contrast", "step");
+    expect(tracks()[0]).toMatchObject({ easing: "step", keys: [{ t: 0 }, { t: 0.75 }] });
+    store().syncTracks(0.5); // held at the first key until 0.75
+    expect(store().settings.adjust.contrast).toBe(20);
+    store().removeKeyframe("adjust.contrast", 0);
+    store().removeKeyframe("adjust.contrast", 0.75);
+    expect(tracks()).toEqual([]);
+  });
+
+  it("ignores settings that can't be keyframed", () => {
+    store().setKeyframe("resize.width", 0);
+    expect(tracks()).toEqual([]);
+  });
+
+  it("removing a filter removes its tracks; motion can be switched off per filter", () => {
+    const id = store().addFilter("wave")!;
+    store().setKeyframe(`filter:${id}:amplitude`, 0);
+    store().setKeyframe("adjust.hue", 0);
+    store().setFilterAnimate(id, false);
+    expect(store().settings.filters[0].animate).toBe(false);
+    store().removeFilter(id);
+    expect(tracks().map((t) => t.path)).toEqual(["adjust.hue"]);
+  });
+});
+
 describe("workspace crop", () => {
   const ws = () => useWorkspaceStore.getState();
   const fakeSource = (width: number, height: number) => ({

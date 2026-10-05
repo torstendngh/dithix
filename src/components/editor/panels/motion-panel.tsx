@@ -4,7 +4,8 @@ import { PixelIcon, type IconName } from "@/components/icons/pixel-icon";
 import { PixelText } from "@/components/icons/pixel-text";
 import { Switch } from "@/components/shared/switch";
 import { getAlgorithm } from "@/lib/dither/algorithms";
-import { frameCount, MOTION_FPS } from "@/lib/dither/motion";
+import { getFilter } from "@/lib/dither/filters";
+import { filterMotion, frameCount, isLooping, MOTION_FPS } from "@/lib/dither/motion";
 import type { CrawlDirection } from "@/lib/dither/types";
 import { cn } from "@/lib/tailwind-utils";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -48,14 +49,58 @@ function LoopStatus() {
   );
 }
 
+/** Per-filter motion switches: which filters roll their phase (and re-roll with boil). */
+function FilterMotion() {
+  const filters = useSettingsStore((s) => s.settings.filters);
+  const boil = useSettingsStore((s) => s.settings.motion.boil);
+  const setFilterAnimate = useSettingsStore((s) => s.setFilterAnimate);
+  const movable = filters.filter((f) => {
+    const m = filterMotion(f);
+    return m.phase || m.seed;
+  });
+
+  return (
+    <div className="grid gap-2 border-t border-zinc-800 pt-3">
+      <span className="text-2xs tracking-[0.2em] text-zinc-500 uppercase">Filter motion</span>
+      {movable.length === 0 ? (
+        <p className="text-2xs leading-relaxed text-zinc-600">
+          No moving filters in the stack. Wave, swirl, RGB split, modulation lines, the glitches and the glitch gradient can move.
+        </p>
+      ) : (
+        movable.map((f) => {
+          const m = filterMotion(f);
+          const what = [m.phase && "rolls over the loop", m.seed && (boil ? "boils" : "boils (set boil)")].filter(Boolean).join(" · ");
+          return (
+            <div key={f.id} className={cn("flex items-center justify-between gap-3", !f.enabled && "opacity-50")}>
+              <div className="grid min-w-0">
+                <span className="truncate text-zinc-300">{getFilter(f.type)?.name ?? f.type}</span>
+                <span className="truncate text-2xs text-zinc-600">{what}</span>
+              </div>
+              <Switch
+                size="sm"
+                aria-label={`Animate ${getFilter(f.type)?.name ?? f.type}`}
+                checked={f.animate}
+                onCheckedChange={(animate) => setFilterAnimate(f.id, animate)}
+              />
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 export function MotionPanel() {
   const motion = useSettingsStore((s) => s.settings.motion);
   const algorithm = useSettingsStore((s) => s.settings.dither.algorithm);
-  const hasFilters = useSettingsStore((s) => s.settings.filters.some((f) => f.enabled));
+  const movingFilters = useSettingsStore((s) =>
+    s.settings.filters.some((f) => f.enabled && f.animate && (filterMotion(f).phase || (filterMotion(f).seed && s.settings.motion.boil > 0))),
+  );
   const setMotion = useSettingsStore((s) => s.setMotion);
   const off = !motion.enabled;
+  const looping = isLooping(motion);
   const ordered = getAlgorithm(algorithm).kind === "ordered";
-  const still = !motion.crawl && !motion.hueTurns && !motion.pulse && !motion.boil && !(motion.animateFilters && hasFilters);
+  const still = !motion.crawl && !motion.hueTurns && !motion.pulse && !motion.boil && !movingFilters;
 
   return (
     <Section
@@ -67,11 +112,13 @@ export function MotionPanel() {
       }
     >
       <p className="text-2xs leading-relaxed text-zinc-600">
-        Turns the image into a seamless loop. Export it as GIF, MP4 or animated SVG.
+        Automatic movement for a seamless loop. Keyframes live in the timeline under the image; switch on either one to
+        animate, and export as GIF, MP4 or animated SVG.
       </p>
 
-      <div className={cn("grid gap-3", off && "pointer-events-none opacity-40")} aria-disabled={off}>
-        {!off && <LoopStatus />}
+      {/* The loop is shared with the timeline, so it stays editable while either is on. */}
+      <div className={cn("grid gap-3", !looping && "pointer-events-none opacity-40")} aria-disabled={!looping}>
+        {looping && <LoopStatus />}
 
         <SliderField
           label="Length"
@@ -92,7 +139,9 @@ export function MotionPanel() {
             onChange={(fps) => setMotion({ fps })}
           />
         </FieldRow>
+      </div>
 
+      <div className={cn("grid gap-3", off && "pointer-events-none opacity-40")} aria-disabled={off}>
         <div className="grid gap-2 border-t border-zinc-800 pt-3">
           <SliderField
             label="Pattern crawl"
@@ -143,19 +192,14 @@ export function MotionPanel() {
             defaultValue={0}
             unit="fr"
           />
-          <FieldRow label="Animate filters">
-            <Switch
-              aria-label="Animate filters"
-              checked={motion.animateFilters}
-              onCheckedChange={(animateFilters) => setMotion({ animateFilters })}
-            />
-          </FieldRow>
         </div>
+
+        <FilterMotion />
 
         <p className="text-2xs leading-relaxed text-zinc-600">
           {still
-            ? "Nothing moves yet — add crawl, a hue cycle, pulse or boil, or a filter to animate."
-            : "Boil re-rolls noise and glitch seeds. Animate filters rolls waves, swirls, RGB split and the TV glitch band."}
+            ? "Nothing moves yet — add crawl, a hue cycle, pulse or boil, or turn on a moving filter."
+            : "Boil re-rolls noise and glitch seeds; filter motion rolls waves, swirls and glitch bands."}
         </p>
       </div>
     </Section>

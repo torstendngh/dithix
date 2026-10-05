@@ -4,11 +4,13 @@ import { mergeDefaults } from "../merge-defaults";
 import { BACKGROUND_MODES, defaultPattern, normalizePattern } from "./background";
 import { GLITCH_GRADIENT, normalizeFilters } from "./filters";
 import { gradientParams } from "./gradient";
+import { normalizeTracks } from "./keyframes";
 import type { DitherSettings, ExportSettings, GradientSettings, MotionSettings } from "./types";
 
 export function defaultMotion(): MotionSettings {
   return {
     enabled: false,
+    keyframes: false,
     duration: 2,
     fps: 12,
     crawl: 1,
@@ -16,7 +18,7 @@ export function defaultMotion(): MotionSettings {
     hueTurns: 0,
     pulse: 0,
     boil: 0,
-    animateFilters: true,
+    tracks: [],
   };
 }
 
@@ -120,7 +122,7 @@ export function completeSettings(raw: unknown): DitherSettings {
   if (legacy?.enabled === true && Array.isArray(settings.filters)) {
     settings.filters = [
       ...settings.filters,
-      { id: GLITCH_GRADIENT, type: GLITCH_GRADIENT, enabled: true, params: gradientParams(legacy as GradientSettings) },
+      { id: GLITCH_GRADIENT, type: GLITCH_GRADIENT, enabled: true, animate: true, params: gradientParams(legacy as GradientSettings) },
     ];
   }
   // Background used to be switched off with a "transparent" mode instead of `enabled`.
@@ -131,5 +133,11 @@ export function completeSettings(raw: unknown): DitherSettings {
   // Arrays pass through mergeDefaults untouched; filters need item-level validation (which also
   // fills any gradient params the legacy section was missing).
   settings.filters = normalizeFilters(settings.filters);
+  // Filter motion used to be one switch for the whole stack.
+  if ((raw as { motion?: { animateFilters?: unknown } } | null)?.motion?.animateFilters === false) {
+    for (const f of settings.filters) f.animate = false;
+  }
+  // After the filters, so tracks pointing at removed filters are dropped.
+  settings.motion.tracks = normalizeTracks(settings.motion.tracks, settings);
   return settings;
 }

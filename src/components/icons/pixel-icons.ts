@@ -367,6 +367,15 @@ export const ICONS = {
     "........",
   ],
   // Film strip: sprocket holes either side of a frame.
+  keyframe: [
+    "...#...",
+    "..###..",
+    ".#####.",
+    "#######",
+    ".#####.",
+    "..###..",
+    "...#...",
+  ],
   motion: [
     "########",
     "#.#..#.#",

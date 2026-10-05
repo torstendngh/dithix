@@ -4,6 +4,7 @@ import { immer } from "zustand/middleware/immer";
 import { IDENTITY_CURVE } from "@/lib/dither/adjust";
 import { completeSettings, defaultExportSettings, defaultSettings } from "@/lib/dither/defaults";
 import { defaultParams, getFilter, MAX_FILTERS } from "@/lib/dither/filters";
+import { applyTracks, filterPath, moveKey, readPath, setKey } from "@/lib/dither/keyframes";
 import { getPalettePreset } from "@/lib/dither/palettes";
 import { newId } from "@/lib/new-id";
 import type {
@@ -12,6 +13,7 @@ import type {
   CurveChannel,
   CurvePoint,
   DitherOptions,
+  Easing,
   DitherSettings,
   BackgroundSettings,
   ExportSettings,
@@ -37,9 +39,21 @@ interface SettingsState {
   moveFilter: (id: string, direction: -1 | 1) => void;
   setFilterEnabled: (id: string, enabled: boolean) => void;
   setFilterParam: (id: string, key: string, value: number) => void;
+  setFilterAnimate: (id: string, animate: boolean) => void;
   clearFilters: () => void;
   setBackground: (patch: Partial<BackgroundSettings>) => void;
   setMotion: (patch: Partial<MotionSettings>) => void;
+  /** Keys the setting's current value at loop position t, creating its track if needed. */
+  setKeyframe: (path: string, t: number) => void;
+  removeKeyframe: (path: string, t: number) => void;
+  moveKeyframe: (path: string, from: number, to: number) => void;
+  setTrackEasing: (path: string, easing: Easing) => void;
+  removeTrack: (path: string) => void;
+  /**
+   * Writes the tracks' values at loop position t into the settings, so the sidebar shows the
+   * playhead's values. The loop itself doesn't change (see `withoutTrackedValues`).
+   */
+  syncTracks: (t: number) => void;
   setPalettePreset: (id: string) => void;
   setPaletteColors: (colors: string[]) => void;
   setPaletteColor: (index: number, hex: string) => void;
@@ -85,13 +99,15 @@ export const useSettingsStore = create<SettingsState>()(
         if (!def || filters.length >= MAX_FILTERS || (def.unique && filters.some((f) => f.type === type))) return null;
         const id = newId();
         set((s) => {
-          s.settings.filters.push({ id, type, enabled: true, params: defaultParams(def) });
+          s.settings.filters.push({ id, type, enabled: true, animate: true, params: defaultParams(def) });
         });
         return id;
       },
       removeFilter: (id) =>
         set((s) => {
           s.settings.filters = s.settings.filters.filter((f) => f.id !== id);
+          const prefix = filterPath(id, "");
+          s.settings.motion.tracks = s.settings.motion.tracks.filter((t) => !t.path.startsWith(prefix));
         }),
       moveFilter: (id, direction) =>
         set((s) => {
@@ -112,9 +128,15 @@ export const useSettingsStore = create<SettingsState>()(
           const p = f && getFilter(f.type)?.params.find((x) => x.key === key);
           if (f && p) f.params[key] = Math.min(p.max, Math.max(p.min, value));
         }),
+      setFilterAnimate: (id, animate) =>
+        set((s) => {
+          const f = s.settings.filters.find((x) => x.id === id);
+          if (f) f.animate = animate;
+        }),
       clearFilters: () =>
         set((s) => {
           s.settings.filters = [];
+          s.settings.motion.tracks = s.settings.motion.tracks.filter((t) => !t.path.startsWith("filter:"));
         }),
       setBackground: (patch) =>
         set((s) => {
@@ -123,6 +145,45 @@ export const useSettingsStore = create<SettingsState>()(
       setMotion: (patch) =>
         set((s) => {
           Object.assign(s.settings.motion, patch);
+        }),
+      setKeyframe: (path, t) =>
+        set((s) => {
+          const value = readPath(s.settings, path);
+          if (value === undefined) return;
+          const { tracks } = s.settings.motion;
+          let track = tracks.find((x) => x.path === path);
+          if (!track) {
+            track = { path, easing: "smooth", keys: [] };
+            tracks.push(track);
+          }
+          setKey(track, t, value);
+        }),
+      removeKeyframe: (path, t) =>
+        set((s) => {
+          const { tracks } = s.settings.motion;
+          const track = tracks.find((x) => x.path === path);
+          if (!track) return;
+          track.keys = track.keys.filter((k) => Math.abs(k.t - t) >= 1e-4);
+          // A track without keys has nothing left to show.
+          if (track.keys.length === 0) s.settings.motion.tracks = tracks.filter((x) => x !== track);
+        }),
+      moveKeyframe: (path, from, to) =>
+        set((s) => {
+          const track = s.settings.motion.tracks.find((x) => x.path === path);
+          if (track) moveKey(track, from, to);
+        }),
+      setTrackEasing: (path, easing) =>
+        set((s) => {
+          const track = s.settings.motion.tracks.find((x) => x.path === path);
+          if (track) track.easing = easing;
+        }),
+      removeTrack: (path) =>
+        set((s) => {
+          s.settings.motion.tracks = s.settings.motion.tracks.filter((x) => x.path !== path);
+        }),
+      syncTracks: (t) =>
+        set((s) => {
+          applyTracks(s.settings, t);
         }),
       setPalettePreset: (id) =>
         set((s) => {

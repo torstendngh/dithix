@@ -138,6 +138,8 @@ export interface FilterInstance {
   id: string;
   type: string;
   enabled: boolean;
+  /** With motion on: rolls the filter's phase over the loop and lets boil re-roll its seed. */
+  animate: boolean;
   params: Record<string, number>;
 }
 
@@ -177,12 +179,32 @@ export interface BackgroundSettings {
 
 export type CrawlDirection = "right" | "left" | "down" | "up";
 
+/** How a track gets from one key to the next. "step" holds each value until the next key. */
+export type Easing = "smooth" | "linear" | "step";
+
+/** A value at loop position t ∈ [0, 1). */
+export interface Keyframe {
+  t: number;
+  value: number;
+}
+
+/** Keyframes for one numeric setting, addressed by `path` (see keyframes.ts). */
+export interface MotionTrack {
+  path: string;
+  easing: Easing;
+  /** Sorted by t, at most one per time. */
+  keys: Keyframe[];
+}
+
 /**
  * Looping animation. Every effect is a function of the loop position t ∈ [0, 1) that returns to
  * its start at t = 1, so the last frame flows into the first.
  */
 export interface MotionSettings {
+  /** The procedural effects below (crawl, hue cycle, pulse, boil, filter motion). */
   enabled: boolean;
+  /** The timeline: keyframed `tracks`. Independent of `enabled`; either one makes a loop. */
+  keyframes: boolean;
   /** Loop length in seconds. */
   duration: number;
   fps: number;
@@ -195,8 +217,8 @@ export interface MotionSettings {
   pulse: number;
   /** Re-roll noise and glitch seeds every this many frames; 0 = off. */
   boil: number;
-  /** Advance filter phases (wave, swirl, RGB split, TV glitch band…) over the loop. */
-  animateFilters: boolean;
+  /** Keyframed settings, applied before the effects above. */
+  tracks: MotionTrack[];
 }
 
 export interface DitherSettings {

@@ -1,13 +1,25 @@
 "use client";
 
 import { useEffect } from "react";
-import { frameCount } from "@/lib/dither/motion";
+import { withoutTrackedValues } from "@/lib/dither/keyframes";
+import { frameCount, isLooping, settingsAtFrame } from "@/lib/dither/motion";
+import type { DitherSettings } from "@/lib/dither/types";
 import type { WorkerRequest, WorkerResponse } from "@/lib/dither/worker";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore, type SourceImage } from "@/stores/workspace-store";
 
 /** Quiet time after the last change before the (much slower) motion loop is rendered. */
 const ANIMATION_DELAY = 350;
+
+/** What the output depends on. Keyframed values written in for the sidebar don't count. */
+const renderKey = (settings: DitherSettings) => JSON.stringify(withoutTrackedValues(settings));
+
+/** With a loop (motion or timeline on), the still is the frame under the playhead. */
+function stillSettings(settings: DitherSettings, playhead: number): DitherSettings {
+  if (!isLooping(settings.motion)) return settings;
+  const n = frameCount(settings.motion);
+  return settingsAtFrame(settings, playhead % n, n);
+}
 
 /**
  * Owns the dithering worker. Keeps at most one job in flight; changes that arrive
@@ -36,7 +48,7 @@ export function useDitherProcessor() {
       post({ type: "cancel-animation" });
       workspace().resetFrames(0);
       const { settings } = useSettingsStore.getState();
-      if (!settings.motion.enabled) return;
+      if (!isLooping(settings.motion)) return;
       animTimer = setTimeout(() => {
         const { source } = workspace();
         if (!source) return;
@@ -60,7 +72,7 @@ export function useDitherProcessor() {
         type: "process",
         jobId: inFlight.jobId,
         sourceId: source.id,
-        settings: useSettingsStore.getState().settings,
+        settings: stillSettings(useSettingsStore.getState().settings, workspace().playhead),
         crop: workspace().crop,
       });
     };
@@ -115,9 +127,16 @@ export function useDitherProcessor() {
         run();
         restartAnimation();
       }
+      // Scrubbing before the loop is in: render the frame under the playhead.
+      if (s.playhead !== prev.playhead && (s.frameTotal === 0 || s.frames.length < s.frameTotal)) run();
     });
-    const unsubSettings = useSettingsStore.subscribe((s, prev) => {
-      if (s.settings === prev.settings) return;
+    let lastKey = renderKey(useSettingsStore.getState().settings);
+    const unsubSettings = useSettingsStore.subscribe(() => {
+      // Read the store rather than the arguments: listeners can be handed a stale state when
+      // another listener updates the store (keyframe sync does).
+      const key = renderKey(useSettingsStore.getState().settings);
+      if (key === lastKey) return;
+      lastKey = key;
       run();
       restartAnimation();
     });

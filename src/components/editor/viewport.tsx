@@ -6,12 +6,14 @@ import { Button } from "@/components/shared/button";
 import { cn } from "@/lib/tailwind-utils";
 import { isFullCrop } from "@/lib/crop-math";
 import { frameLayout } from "@/lib/dither/frame";
+import { isLooping } from "@/lib/dither/motion";
 import { wheelZoomFactor } from "@/lib/viewport-math";
 import { useSettingsStore } from "@/stores/settings-store";
 import { currentView, useWorkspaceStore } from "@/stores/workspace-store";
 import { openImage, openSample, pickImage } from "./actions";
 import { IconButton } from "./fields";
 import { StatusBar } from "./status-bar";
+import { TimelineIsland } from "./timeline";
 
 function EmptyState() {
   return (
@@ -35,31 +37,6 @@ function EmptyState() {
   );
 }
 
-/** Play/pause for the motion loop, with render progress while frames are still coming in. */
-function PlaybackControl() {
-  const playing = useWorkspaceStore((s) => s.playing);
-  const setPlaying = useWorkspaceStore((s) => s.setPlaying);
-  const done = useWorkspaceStore((s) => s.frames.length);
-  const total = useWorkspaceStore((s) => s.frameTotal);
-  const rendering = total > 0 && done < total;
-  return (
-    <>
-      <IconButton
-        icon={playing ? "pause" : "play"}
-        label={playing ? "Pause animation" : "Play animation"}
-        aria-pressed={playing}
-        onClick={() => setPlaying(!playing)}
-      />
-      {rendering && (
-        <span className="px-1.5 text-2xs text-zinc-500 tabular-nums" title="Rendering animation frames">
-          {done}/{total}
-        </span>
-      )}
-      <span className="h-4 w-px bg-zinc-800" />
-    </>
-  );
-}
-
 function ZoomControls({ zoom }: { zoom: number }) {
   const fit = useWorkspaceStore((s) => s.fit);
   const fitView = useWorkspaceStore((s) => s.fitView);
@@ -67,13 +44,11 @@ function ZoomControls({ zoom }: { zoom: number }) {
   const stepZoom = useWorkspaceStore((s) => s.stepZoom);
   const compare = useWorkspaceStore((s) => s.compare);
   const setCompare = useWorkspaceStore((s) => s.setCompare);
-  const motion = useSettingsStore((s) => s.settings.motion.enabled);
   const cropped = useWorkspaceStore((s) => !isFullCrop(s.crop));
   const setCropping = useWorkspaceStore((s) => s.setCropping);
 
   return (
     <div className="absolute right-3 bottom-3 flex items-center border border-zinc-800 bg-zinc-950/90 backdrop-blur">
-      {motion && <PlaybackControl />}
       <IconButton icon="crop" label="Crop & pan (C)" aria-pressed={cropped} onClick={() => setCropping(true)} />
       <IconButton
         icon="eye"
@@ -189,8 +164,13 @@ export function Viewport() {
   const resize = useSettingsStore((s) => s.settings.resize);
   const padding = useSettingsStore((s) => s.settings.background.padding);
   const crop = useWorkspaceStore((s) => s.crop);
+  const playhead = useWorkspaceStore((s) => s.playhead);
+  const setPlayhead = useWorkspaceStore((s) => s.setPlayhead);
+  const complete = isLooping(motion) && frameTotal > 0 && frames.length === frameTotal;
   // Play once the whole loop is in; until then (and while comparing) show the still.
-  const loop = motion.enabled && playing && !compare && frameTotal > 0 && frames.length === frameTotal ? frames : null;
+  const loop = complete && playing && !compare ? frames : null;
+  // Once the loop is in, show its frame under the playhead (the still can lag behind a scrub).
+  const frame = complete && !compare ? frames[playhead % frames.length] : null;
 
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -212,8 +192,9 @@ export function Viewport() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !result) return;
-    canvas.width = result.width;
-    canvas.height = result.height;
+    const shown = frame ?? result;
+    canvas.width = shown.width;
+    canvas.height = shown.height;
     const ctx = canvas.getContext("2d")!;
     if (compare && source) {
       // Same framing as the result: the cropped region, inside the margin.
@@ -228,39 +209,28 @@ export function Viewport() {
         layout.padding * k, layout.padding * k, inner.width * k, inner.height * k,
       );
     } else {
-      ctx.putImageData(result, 0, 0);
+      ctx.putImageData(shown, 0, 0);
     }
-  }, [result, compare, source, resize, crop, padding]);
+  }, [result, frame, compare, source, resize, crop, padding]);
 
-  // Motion loop playback, timed by the clock so it keeps its speed whatever the display rate.
+  // Motion loop playback: advances the playhead by the clock, so it keeps its speed whatever the
+  // display rate, starting from wherever the playhead was left.
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !loop) return;
-    canvas.width = loop[0].width;
-    canvas.height = loop[0].height;
-    const ctx = canvas.getContext("2d")!;
-    const start = performance.now();
-    let shown = -1;
+    if (!loop) return;
+    let shown = useWorkspaceStore.getState().playhead % loop.length;
+    const start = performance.now() - (shown / motion.fps) * 1000;
     let raf = 0;
     const tick = (now: number) => {
       const i = Math.floor(((now - start) / 1000) * motion.fps) % loop.length;
       if (i !== shown) {
-        ctx.putImageData(loop[i], 0, 0);
+        setPlayhead(i);
         shown = i;
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      // Back to the still when playback stops.
-      if (result) {
-        canvas.width = result.width;
-        canvas.height = result.height;
-        ctx.putImageData(result, 0, 0);
-      }
-    };
-  }, [loop, motion.fps, result]);
+    return () => cancelAnimationFrame(raf);
+  }, [loop, motion.fps, setPlayhead]);
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -315,7 +285,11 @@ export function Viewport() {
         <p className="pointer-events-none absolute inset-0 grid place-items-center text-zinc-500">processing…</p>
       )}
 
-      <StatusBar />
+      {/* Bottom-left islands; kept clear of the zoom controls on the right. */}
+      <div className="absolute bottom-3 left-3 flex max-w-[calc(100%-18rem)] min-w-0 items-center gap-2">
+        <TimelineIsland />
+        <StatusBar />
+      </div>
       {result && <ZoomControls zoom={view.zoom} />}
       {compare && result && (
         <span className="absolute top-3 left-3 bg-zinc-100 px-1.5 py-0.5 text-2xs tracking-widest text-zinc-950 uppercase">

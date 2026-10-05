@@ -44,6 +44,7 @@ const withFilters = (s: DitherSettings, filters: [string, Record<string, number>
     id: `${type}-${i}`,
     type,
     enabled: true,
+    animate: true,
     params: { ...defaultParams(getFilter(type)!), ...params },
   }));
 };

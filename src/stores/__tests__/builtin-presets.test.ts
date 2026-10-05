@@ -96,8 +96,8 @@ describe("official dithix preset", () => {
     },
     // Added later still; off, so the preset doesn't animate.
     motion: {
-      enabled: false, duration: 2, fps: 12, crawl: 1, crawlDirection: "right",
-      hueTurns: 0, pulse: 0, boil: 0, animateFilters: true,
+      enabled: false, keyframes: false, duration: 2, fps: 12, crawl: 1, crawlDirection: "right",
+      hueTurns: 0, pulse: 0, boil: 0, tracks: [],
     },
   };
 

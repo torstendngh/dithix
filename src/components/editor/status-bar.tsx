@@ -4,7 +4,7 @@ import { PixelText } from "@/components/icons/pixel-text";
 import { cn } from "@/lib/tailwind-utils";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
-/** Compact floating status chip, bottom-left of the viewport (mirrors the zoom controls). */
+/** Compact floating status chip, bottom-left of the viewport (mirrors the zoom controls). Positioned by the viewport. */
 export function StatusBar() {
   const source = useWorkspaceStore((s) => s.source);
   const result = useWorkspaceStore((s) => s.result);
@@ -17,7 +17,7 @@ export function StatusBar() {
   return (
     <div
       role="status"
-      className="absolute bottom-3 left-3 flex h-[30px] max-w-[calc(100%-18rem)] min-w-0 items-center gap-2.5 border border-zinc-800 bg-zinc-950/90 px-2.5 text-2xs text-zinc-500 tabular-nums backdrop-blur"
+      className="flex h-[30px] min-w-0 items-center gap-2.5 border border-zinc-800 bg-zinc-950/90 px-2.5 text-2xs text-zinc-500 tabular-nums backdrop-blur"
     >
       <span
         className={cn("size-2 shrink-0", processing ? "animate-pulse bg-amber-400" : error ? "bg-red-500" : "bg-zinc-600")}

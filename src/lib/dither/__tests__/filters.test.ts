@@ -23,6 +23,7 @@ const inst = (type: string, params: Record<string, number> = {}): FilterInstance
   id: type,
   type,
   enabled: true,
+  animate: true,
   params: { ...defaultParams(getFilter(type)!), ...params },
 });
 

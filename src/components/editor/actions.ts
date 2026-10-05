@@ -9,6 +9,7 @@ import {
   renderAnimation,
   renderExport,
 } from "@/lib/image-io";
+import { isLooping } from "@/lib/dither/motion";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
@@ -45,7 +46,7 @@ export async function exportResult() {
   if (!result || !source || exporting) return;
   const { exportSettings, settings } = useSettingsStore.getState();
   const background = settings.palette.colors[0] ?? "#000000";
-  const animated = settings.motion.enabled && ANIMATED_FORMATS.includes(exportSettings.format);
+  const animated = isLooping(settings.motion) && ANIMATED_FORMATS.includes(exportSettings.format);
   try {
     exporting = true;
     useWorkspaceStore.getState().setExporting(true);
@@ -55,9 +56,12 @@ export async function exportResult() {
       blob = await renderAnimation(frames, settings.motion.fps, exportSettings, background);
     } else {
       if (exportSettings.format === "gif" || exportSettings.format === "mp4") {
-        throw new Error(`Turn on Motion to export ${exportSettings.format.toUpperCase()}`);
+        throw new Error(`Turn on Motion or the timeline to export ${exportSettings.format.toUpperCase()}`);
       }
-      blob = await renderExport(result, exportSettings, background);
+      // With a finished loop on screen, the still is the frame under the playhead.
+      const { playhead } = useWorkspaceStore.getState();
+      const still = isLooping(settings.motion) && frameTotal > 0 && frames.length === frameTotal ? frames[playhead % frames.length] : result;
+      blob = await renderExport(still, exportSettings, background);
     }
     downloadBlob(blob, exportFileName(source.name, exportSettings.format));
   } catch (err) {

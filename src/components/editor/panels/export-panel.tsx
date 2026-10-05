@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { PixelIcon } from "@/components/icons/pixel-icon";
 import { Button } from "@/components/shared/button";
-import { frameCount } from "@/lib/dither/motion";
+import { frameCount, isLooping } from "@/lib/dither/motion";
 import type { ExportFormat } from "@/lib/dither/types";
 import { ANIMATED_FORMATS, maxExportScale } from "@/lib/image-io";
 import { videoScale } from "@/lib/video";
@@ -50,8 +50,9 @@ export function ExportPanel() {
   const scale = Math.min(exportSettings.scale, maxScale);
 
   const format = exportSettings.format;
-  const animated = motion.enabled && ANIMATED_FORMATS.includes(format);
-  const needsMotion = !motion.enabled && (format === "gif" || format === "mp4");
+  const looping = isLooping(motion);
+  const animated = looping && ANIMATED_FORMATS.includes(format);
+  const needsMotion = !looping && (format === "gif" || format === "mp4");
   const rendering = animated && (total === 0 || done < total);
   const outScale = format === "mp4" && result ? videoScale(result.width, result.height, exportSettings.scale) : scale;
   const frames = frameCount(motion);
@@ -60,8 +61,8 @@ export function ExportPanel() {
     <Section id="export" title="Export" icon="download">
       <div role="group" aria-label="Export format" className="flex w-full">
         {FORMATS.map((f, i) => {
-          const unavailable = f.animated && (!motion.enabled || (f.value === "mp4" && mp4 === false));
-          const why = !motion.enabled ? "Turn on Motion to export animations" : "This browser can't encode video";
+          const unavailable = f.animated && (!looping || (f.value === "mp4" && mp4 === false));
+          const why = !looping ? "Turn on Motion or the timeline to export animations" : "This browser can't encode video";
           return (
             <Button
               key={f.value}
@@ -85,7 +86,7 @@ export function ExportPanel() {
           {format === "mp4" && "MP4 · one loop, no transparency. Upscaled at least 2× so video compression keeps pixels crisp."}
         </p>
       )}
-      {needsMotion && <p className="text-2xs leading-relaxed text-amber-400/90">Turn on Motion to export {format.toUpperCase()}.</p>}
+      {needsMotion && <p className="text-2xs leading-relaxed text-amber-400/90">Turn on Motion or the timeline to export {format.toUpperCase()}.</p>}
       <FieldRow label="Upscale">
         <div className="flex items-center gap-1">
           {SCALES.map((s) => (

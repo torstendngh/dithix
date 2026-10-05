@@ -40,6 +40,10 @@ interface WorkspaceState {
   frameTotal: number;
   /** Whether the viewport plays the loop (when complete) instead of the still. */
   playing: boolean;
+  /** Frame shown when paused, and where new keyframes go. Advances during playback. */
+  playhead: number;
+  /** The keyframable setting changed most recently (see keyframes.ts), for "Key last change". */
+  lastChange: string | null;
   /** An export is being encoded. */
   exporting: boolean;
 
@@ -64,6 +68,8 @@ interface WorkspaceState {
   resetFrames: (total: number) => void;
   addFrame: (index: number, frame: ImageData) => void;
   setPlaying: (playing: boolean) => void;
+  setPlayhead: (frame: number) => void;
+  setLastChange: (path: string | null) => void;
   setExporting: (exporting: boolean) => void;
 
   setCrop: (crop: CropRect) => void;
@@ -116,6 +122,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       frames: [],
       frameTotal: 0,
       playing: true,
+      playhead: 0,
+      lastChange: null,
       exporting: false,
       crop: { ...FULL_CROP },
       cropAspect: 0,
@@ -170,6 +178,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setPlaying: (playing) =>
         set((s) => {
           s.playing = playing;
+        }),
+      setPlayhead: (frame) =>
+        set((s) => {
+          s.playhead = Math.max(0, Math.round(frame));
+        }),
+      setLastChange: (path) =>
+        set((s) => {
+          s.lastChange = path;
         }),
       setExporting: (exporting) =>
         set((s) => {
