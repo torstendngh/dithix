@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import type { PixelBuffer } from "@/lib/dither/types";
+import { fitAspect, normalizedAspect } from "@/lib/crop-math";
+import { FULL_CROP } from "@/lib/dither/frame";
+import type { CropRect, PixelBuffer } from "@/lib/dither/types";
 import {
   clampView,
   fitZoom,
@@ -41,6 +43,13 @@ interface WorkspaceState {
   /** An export is being encoded. */
   exporting: boolean;
 
+  /** Crop window on the current image (normalised). Per image, so it is not part of presets. */
+  crop: CropRect;
+  /** Locked crop shape as pixel width/height; 0 = free. */
+  cropAspect: number;
+  /** Crop mode: the viewport shows the whole source with an editable crop box. */
+  cropping: boolean;
+
   /** While true the image is fitted to the viewport and `view` is ignored. */
   fit: boolean;
   view: View;
@@ -56,6 +65,17 @@ interface WorkspaceState {
   addFrame: (index: number, frame: ImageData) => void;
   setPlaying: (playing: boolean) => void;
   setExporting: (exporting: boolean) => void;
+
+  setCrop: (crop: CropRect) => void;
+  /** Locks (or frees, with 0) the crop shape, refitting the crop to it. */
+  setCropAspect: (aspect: number) => void;
+  /** Back to the full image, keeping a locked shape (crop mode's Reset). */
+  resetCrop: () => void;
+  /** Removes the crop entirely: full image and a free shape. */
+  clearCrop: () => void;
+  /** Commits the crop dialog's draft in one update (a single re-render) and closes it. */
+  applyCrop: (crop: CropRect, aspect: number) => void;
+  setCropping: (cropping: boolean) => void;
 
   setViewport: (size: Size) => void;
   fitView: () => void;
@@ -97,6 +117,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       frameTotal: 0,
       playing: true,
       exporting: false,
+      crop: { ...FULL_CROP },
+      cropAspect: 0,
+      cropping: false,
       fit: true,
       view: { zoom: 1, x: 0, y: 0 },
       viewport: { width: 0, height: 0 },
@@ -110,6 +133,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           s.fit = true;
           s.frames = [];
           s.frameTotal = 0;
+          // A new image starts uncropped; a locked shape carries over.
+          s.crop = s.cropAspect ? fitAspect({ ...FULL_CROP }, normalizedAspect(s.cropAspect, source.width, source.height)) : { ...FULL_CROP };
+          s.cropping = false;
         }),
       setResult: (result, duration) =>
         set((s) => {
@@ -148,6 +174,38 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setExporting: (exporting) =>
         set((s) => {
           s.exporting = exporting;
+        }),
+
+      setCrop: (crop) =>
+        set((s) => {
+          s.crop = crop;
+        }),
+      setCropAspect: (aspect) =>
+        set((s) => {
+          s.cropAspect = aspect;
+          if (aspect > 0 && s.source) s.crop = fitAspect(s.crop, normalizedAspect(aspect, s.source.width, s.source.height));
+        }),
+      resetCrop: () =>
+        set((s) => {
+          s.crop =
+            s.cropAspect && s.source
+              ? fitAspect({ ...FULL_CROP }, normalizedAspect(s.cropAspect, s.source.width, s.source.height))
+              : { ...FULL_CROP };
+        }),
+      clearCrop: () =>
+        set((s) => {
+          s.crop = { ...FULL_CROP };
+          s.cropAspect = 0;
+        }),
+      applyCrop: (crop, aspect) =>
+        set((s) => {
+          s.crop = crop;
+          s.cropAspect = aspect;
+          s.cropping = false;
+        }),
+      setCropping: (cropping) =>
+        set((s) => {
+          s.cropping = cropping && s.source !== null;
         }),
 
       setViewport: (size) =>

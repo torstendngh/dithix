@@ -2,8 +2,9 @@ import { dither } from "./algorithms";
 import { PaletteMatcher, paletteRgb } from "./color";
 import { ditherGradient, gradientFromFilters } from "./gradient";
 import { prepareImage } from "./prepare";
-import { computeOutputSize, resample } from "./resize";
-import type { DitherSettings, PixelBuffer } from "./types";
+import { extractRegion, frameLayout, framedResampler, FULL_CROP } from "./frame";
+import { resample } from "./resize";
+import type { CropRect, DitherSettings, PixelBuffer } from "./types";
 
 export { paletteRgb };
 
@@ -14,12 +15,15 @@ export function ditherBuffer(src: PixelBuffer, settings: Omit<DitherSettings, "r
   return dither(adjusted, settings.dither, matcher);
 }
 
-/** Full pipeline: resize → prepare → dither (or the glitch gradient, when that filter is on). */
-export function processImage(src: PixelBuffer, settings: DitherSettings): PixelBuffer {
-  const { width, height } = computeOutputSize(src.width, src.height, settings.resize);
+/**
+ * Full pipeline: crop → resize → margin → prepare → dither (or the glitch gradient, when that
+ * filter is on). `crop` belongs to the image rather than the look, so it is passed separately.
+ */
+export function processImage(src: PixelBuffer, settings: DitherSettings, crop: CropRect = FULL_CROP): PixelBuffer {
+  const layout = frameLayout(src.width, src.height, settings.resize, crop, settings.background.padding);
+  const region = extractRegion(src, layout.region);
+  const frame = framedResampler((w, h) => resample(region, w, h, settings.resize.filter), layout);
   const gradient = gradientFromFilters(settings.filters);
-  if (gradient) {
-    return ditherGradient((w, h) => resample(src, w, h, settings.resize.filter), width, height, settings, gradient);
-  }
-  return ditherBuffer(resample(src, width, height, settings.resize.filter), settings);
+  if (gradient) return ditherGradient(frame, layout.width, layout.height, settings, gradient);
+  return ditherBuffer(frame(layout.width, layout.height), settings);
 }

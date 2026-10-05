@@ -45,7 +45,7 @@ export function baseSettings(): DitherSettings {
     },
     palette: { presetId: "zinc", colors: [...getPalettePreset("zinc")!.colors], distance: "rgb" },
     filters: [],
-    background: { enabled: false, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8, pattern: defaultPattern() },
+    background: { enabled: false, padding: 0, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8, pattern: defaultPattern() },
     motion: defaultMotion(),
   };
 }
@@ -86,7 +86,7 @@ const OFFICIAL: DitherSettings = {
     distance: "rgb",
   },
   filters: [],
-  background: { enabled: false, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8, pattern: defaultPattern() },
+  background: { enabled: false, padding: 0, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8, pattern: defaultPattern() },
   motion: defaultMotion(),
 };
 

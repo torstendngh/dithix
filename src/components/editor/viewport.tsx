@@ -4,6 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PixelIcon } from "@/components/icons/pixel-icon";
 import { Button } from "@/components/shared/button";
 import { cn } from "@/lib/tailwind-utils";
+import { isFullCrop } from "@/lib/crop-math";
+import { frameLayout } from "@/lib/dither/frame";
 import { wheelZoomFactor } from "@/lib/viewport-math";
 import { useSettingsStore } from "@/stores/settings-store";
 import { currentView, useWorkspaceStore } from "@/stores/workspace-store";
@@ -66,10 +68,13 @@ function ZoomControls({ zoom }: { zoom: number }) {
   const compare = useWorkspaceStore((s) => s.compare);
   const setCompare = useWorkspaceStore((s) => s.setCompare);
   const motion = useSettingsStore((s) => s.settings.motion.enabled);
+  const cropped = useWorkspaceStore((s) => !isFullCrop(s.crop));
+  const setCropping = useWorkspaceStore((s) => s.setCropping);
 
   return (
     <div className="absolute right-3 bottom-3 flex items-center border border-zinc-800 bg-zinc-950/90 backdrop-blur">
       {motion && <PlaybackControl />}
+      <IconButton icon="crop" label="Crop & pan (C)" aria-pressed={cropped} onClick={() => setCropping(true)} />
       <IconButton
         icon="eye"
         label="Hold to compare with original (Space)"
@@ -181,6 +186,9 @@ export function Viewport() {
   const frameTotal = useWorkspaceStore((s) => s.frameTotal);
   const playing = useWorkspaceStore((s) => s.playing);
   const motion = useSettingsStore((s) => s.settings.motion);
+  const resize = useSettingsStore((s) => s.settings.resize);
+  const padding = useSettingsStore((s) => s.settings.background.padding);
+  const crop = useWorkspaceStore((s) => s.crop);
   // Play once the whole loop is in; until then (and while comparing) show the still.
   const loop = motion.enabled && playing && !compare && frameTotal > 0 && frames.length === frameTotal ? frames : null;
 
@@ -208,13 +216,21 @@ export function Viewport() {
     canvas.height = result.height;
     const ctx = canvas.getContext("2d")!;
     if (compare && source) {
+      // Same framing as the result: the cropped region, inside the margin.
+      const layout = frameLayout(source.width, source.height, resize, crop, padding);
+      const k = result.width / layout.width;
+      const { region, inner } = layout;
       ctx.imageSmoothingQuality = "high";
       ctx.clearRect(0, 0, result.width, result.height);
-      ctx.drawImage(source.bitmap, 0, 0, result.width, result.height);
+      ctx.drawImage(
+        source.bitmap,
+        region.x, region.y, region.width, region.height,
+        layout.padding * k, layout.padding * k, inner.width * k, inner.height * k,
+      );
     } else {
       ctx.putImageData(result, 0, 0);
     }
-  }, [result, compare, source]);
+  }, [result, compare, source, resize, crop, padding]);
 
   // Motion loop playback, timed by the clock so it keeps its speed whatever the display rate.
   useEffect(() => {

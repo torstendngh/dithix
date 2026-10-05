@@ -312,6 +312,23 @@ export const FILTERS: FilterDef[] = [
     },
   },
   {
+    type: "modulation",
+    name: "Modulation lines",
+    category: "stylize",
+    description: "Parallel lines that bunch up and bend with brightness, like an FM signal.",
+    params: [
+      { key: "spacing", label: "Spacing", min: 2, max: 48, step: 1, default: 8, unit: "px" },
+      { key: "modulation", label: "Modulation", min: 0, max: 20, step: 0.1, default: 4, unit: "×" },
+      { key: "thickness", label: "Thickness", min: 5, max: 95, step: 1, default: 30, unit: "%" },
+      { key: "fill", label: "Fill", min: 0, max: 100, step: 1, default: 50, unit: "%" },
+      { key: "lift", label: "Lift", min: 0, max: 100, step: 1, default: 50, unit: "%" },
+      { key: "smooth", label: "Smooth", min: 0, max: 10, step: 0.5, default: 1, unit: "px" },
+      { key: "phase", label: "Phase", min: 0, max: 360, step: 1, default: 0, unit: "°" },
+      { key: "direction", label: "Direction", min: 0, max: 1, default: 1, options: DIRECTION },
+    ],
+    apply: (src, p, ctx) => modulationLines(src, p, ctx),
+  },
+  {
     type: "wave",
     name: "Wave",
     category: "warp",
@@ -557,6 +574,39 @@ export const FILTERS: FilterDef[] = [
  * split from brightness and smeared sideways, the way composite video bleeds. Rows are keyed in
  * output pixels (`ctx.scale`) and the band in relative height, so it matches across resolutions.
  */
+/**
+ * Frequency-modulated lines. Walking along each row (or column), the line phase advances by the
+ * base frequency plus extra in proportion to brightness, so lines stay straight over dark areas,
+ * crowd together and bend where it gets bright, and break into aliased dots once they pass a cycle
+ * per pixel. Lines take the image colour, lifted towards white so they show in the dark; gaps
+ * are black.
+ */
+export function modulationLines(src: PixelBuffer, p: Record<string, number>, ctx: FilterContext): PixelBuffer {
+  const { width: w, height: h, data: d } = src;
+  const map = p.smooth > 0 ? boxBlur(src, p.smooth * ctx.scale) : src;
+  const vertical = p.direction === 1;
+  const along = vertical ? w : h;
+  const across = vertical ? h : w;
+  const base = 1 / Math.max(1, p.spacing * ctx.scale);
+  const thick = p.thickness / 100;
+  const fill = p.fill / 100;
+  const lift = p.lift / 100;
+  const turns = p.phase / 360;
+  const start = Math.floor(turns) - turns; // so 360° lands exactly on 0°
+  const out = clone(src);
+  for (let a = 0; a < across; a++) {
+    let phase = start;
+    for (let i = 0; i < along; i++) {
+      const o = (vertical ? a * w + i : i * w + a) * 4;
+      const l = luma(map.data, o) / 255;
+      phase += base * (1 + p.modulation * l);
+      const on = phase - Math.floor(phase) < thick + (1 - thick) * fill * l;
+      for (let k = 0; k < 3; k++) out.data[o + k] = on ? d[o + k] + (255 - d[o + k]) * lift : 0;
+    }
+  }
+  return out;
+}
+
 export function tvGlitch(src: PixelBuffer, p: Record<string, number>, ctx: FilterContext): PixelBuffer {
   const { width: w, height: h, data: d } = src;
   const out = new Uint8ClampedArray(d.length);

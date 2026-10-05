@@ -153,10 +153,20 @@ export interface BackgroundPattern {
   scale: number;
 }
 
+/** Crop window on the source image, normalised to 0..1 of its width and height. */
+export interface CropRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /** Fill for transparent areas, composited before filters and dithering. */
 export interface BackgroundSettings {
   /** Off leaves transparent areas transparent. */
   enabled: boolean;
+  /** Margin around the image in output pixels; it is transparent, so the fill shows there. */
+  padding: number;
   mode: BackgroundMode;
   colorA: string;
   colorB: string;

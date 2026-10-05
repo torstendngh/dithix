@@ -321,3 +321,66 @@ describe("filter stack", () => {
     expect(store().settings.filters).toEqual([expect.objectContaining({ type: "blur", params: { radius: 0 } })]);
   });
 });
+
+describe("workspace crop", () => {
+  const ws = () => useWorkspaceStore.getState();
+  const fakeSource = (width: number, height: number) => ({
+    name: "x.png",
+    width,
+    height,
+    bitmap: { close() {} } as unknown as ImageBitmap,
+    sample: { width: 1, height: 1, data: new Uint8ClampedArray(4) },
+  });
+
+  beforeEach(() => {
+    useWorkspaceStore.setState({ source: null, crop: { x: 0, y: 0, width: 1, height: 1 }, cropAspect: 0, cropping: false });
+  });
+
+  it("can't enter crop mode without an image", () => {
+    ws().setCropping(true);
+    expect(ws().cropping).toBe(false);
+  });
+
+  it("locking an aspect refits the crop, and reset keeps the shape", () => {
+    ws().setSource(fakeSource(200, 100));
+    ws().setCropAspect(1); // square on a 2:1 image → half the width
+    expect(ws().crop).toEqual({ x: 0.25, y: 0, width: 0.5, height: 1 });
+    ws().setCrop({ x: 0, y: 0, width: 0.1, height: 0.2 });
+    ws().resetCrop();
+    expect(ws().crop).toEqual({ x: 0.25, y: 0, width: 0.5, height: 1 });
+  });
+
+  it("applyCrop commits the dialog's crop and shape in one update and closes it", () => {
+    ws().setSource(fakeSource(200, 100));
+    ws().setCropping(true);
+    let updates = 0;
+    const unsubscribe = useWorkspaceStore.subscribe(() => updates++);
+    ws().applyCrop({ x: 0.25, y: 0, width: 0.5, height: 1 }, 1);
+    unsubscribe();
+    expect(updates).toBe(1);
+    expect(ws().crop).toEqual({ x: 0.25, y: 0, width: 0.5, height: 1 });
+    expect(ws().cropAspect).toBe(1);
+    expect(ws().cropping).toBe(false);
+  });
+
+  it("clearCrop removes the crop and unlocks the shape", () => {
+    ws().setSource(fakeSource(200, 100));
+    ws().setCropAspect(1);
+    ws().clearCrop();
+    expect(ws().crop).toEqual({ x: 0, y: 0, width: 1, height: 1 });
+    expect(ws().cropAspect).toBe(0);
+  });
+
+  it("a new image starts uncropped (but keeps a locked shape) and leaves crop mode", () => {
+    ws().setSource(fakeSource(100, 100));
+    ws().setCrop({ x: 0.1, y: 0.1, width: 0.3, height: 0.3 });
+    ws().setCropping(true);
+    ws().setSource(fakeSource(100, 100));
+    expect(ws().crop).toEqual({ x: 0, y: 0, width: 1, height: 1 });
+    expect(ws().cropping).toBe(false);
+
+    ws().setCropAspect(16 / 9);
+    ws().setSource(fakeSource(100, 100));
+    expect(ws().crop.width / ws().crop.height).toBeCloseTo(16 / 9);
+  });
+});

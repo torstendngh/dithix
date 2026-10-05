@@ -111,6 +111,31 @@ describe("individual filters", () => {
     expect(applyFilters(src, [inst("slice-shift", { amount: 50, slices: 8, seed: 4 })]).data).not.toEqual(out.data);
   });
 
+  it("modulation lines are evenly spaced on black and crowd together on bright areas", () => {
+    const p = { spacing: 8, modulation: 3, thickness: 25, fill: 0, lift: 100, smooth: 0, direction: 1 };
+    const onCount = (img: PixelBuffer) => {
+      let n = 0;
+      for (let x = 0; x < img.width; x++) if (img.data[x * 4] > 0) n++;
+      return n;
+    };
+    const dark = applyFilters(solid(64, 2, [0, 0, 0, 255]), [inst("modulation", p)]);
+    // 64 px at an 8 px period, 2 px of each lit (and lifted to white).
+    expect(onCount(dark)).toBe(16);
+    expect(dark.data[7 * 4]).toBe(255);
+    const bright = applyFilters(solid(64, 2, [255, 255, 255, 255]), [inst("modulation", p)]);
+    // Four times the frequency: 32 lines of half a pixel, so about every other pixel is lit.
+    expect(onCount(bright)).toBeGreaterThan(24);
+    expect(onCount(bright)).toBeLessThan(40);
+    // Fill thickens lines with brightness until white is solid.
+    expect(onCount(applyFilters(solid(64, 2, [255, 255, 255, 255]), [inst("modulation", { ...p, fill: 100 })]))).toBe(64);
+  });
+
+  it("modulation lines loop over a full phase turn", () => {
+    const a = applyFilters(src, [inst("modulation", { phase: 0 })]);
+    expect(applyFilters(src, [inst("modulation", { phase: 360 })]).data).toEqual(a.data);
+    expect(applyFilters(src, [inst("modulation", { phase: 90 })]).data).not.toEqual(a.data);
+  });
+
   it("swirl and bulge leave pixels outside their radius alone", () => {
     for (const type of ["swirl", "bulge"]) {
       const out = applyFilters(src, [inst(type, { radius: 30 })]);
@@ -177,11 +202,11 @@ describe("fillBackground", () => {
 
   it("is a no-op when off", () => {
     const img = transparentHalf();
-    expect(fillBackground(img, { enabled: false, mode: "solid", colorA: "#000000", colorB: "#ffffff", size: 4, pattern: defaultPattern() })).toBe(img);
+    expect(fillBackground(img, { enabled: false, padding: 0, mode: "solid", colorA: "#000000", colorB: "#ffffff", size: 4, pattern: defaultPattern() })).toBe(img);
   });
 
   it("fills only transparent pixels and makes the result opaque", () => {
-    const out = fillBackground(transparentHalf(), { enabled: true, mode: "solid", colorA: "#0000ff", colorB: "#ffffff", size: 4, pattern: defaultPattern() });
+    const out = fillBackground(transparentHalf(), { enabled: true, padding: 0, mode: "solid", colorA: "#0000ff", colorB: "#ffffff", size: 4, pattern: defaultPattern() });
     expect([...out.data.slice(0, 4)]).toEqual([0, 0, 255, 255]);
     const bottom = out.data.length - 4;
     expect([...out.data.slice(bottom, bottom + 4)]).toEqual([200, 0, 0, 255]);
@@ -191,7 +216,7 @@ describe("fillBackground", () => {
     "%s pattern uses both colours",
     (mode) => {
       const empty = solid(32, 32, [0, 0, 0, 0]);
-      const out = fillBackground(empty, { enabled: true, mode, colorA: "#000000", colorB: "#ffffff", size: 8, pattern: defaultPattern() });
+      const out = fillBackground(empty, { enabled: true, padding: 0, mode, colorA: "#000000", colorB: "#ffffff", size: 8, pattern: defaultPattern() });
       const values = new Set<number>();
       for (let i = 0; i < out.data.length; i += 4) values.add(out.data[i]);
       expect(values).toEqual(new Set([0, 255]));
@@ -227,7 +252,7 @@ describe("legacy background", () => {
 
 describe("custom background pattern", () => {
   const bg = (pattern: ReturnType<typeof defaultPattern>) =>
-    ({ enabled: true, mode: "pattern", colorA: "#000000", colorB: "#ffffff", size: 8, pattern }) as const;
+    ({ enabled: true, padding: 0, mode: "pattern", colorA: "#000000", colorB: "#ffffff", size: 8, pattern }) as const;
 
   it("tiles the drawn cells at the given pixel scale", () => {
     const pattern = { size: 2, cells: "1000", scale: 2 };

@@ -33,12 +33,6 @@ const builtIn = (
   return { id: `builtin:${id}`, name, settings, createdAt: 0, builtIn: true, group };
 };
 
-/** Palette that isn't one of the named palette presets. */
-const withColors = (s: DitherSettings, colors: string[]) => {
-  s.palette.presetId = null;
-  s.palette.colors = colors;
-};
-
 const withPalette = (s: DitherSettings, id: string) => {
   s.palette.presetId = id;
   s.palette.colors = [...getPalettePreset(id)!.colors];
@@ -134,12 +128,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.dither.strength = 0.6;
       s.adjust.saturation = 15;
       s.palette.distance = "redmean";
-      withColors(s, [
-        "#1b1b1b", "#3c3c3c", "#6f6f6f", "#a0a0a0", "#d0d0d0",
-        "#4a3220", "#7a5332", "#a67c52",
-        "#2f5a1a", "#4e8a2a", "#7cbd3f",
-        "#2a4d8f", "#4f7fd6", "#9cc7ff",
-      ]);
+      withPalette(s, "overworld");
     },
     "games",
   ),
@@ -152,7 +141,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.dither.strength = 0.7;
       s.adjust.contrast = 15;
       s.palette.distance = "redmean";
-      withColors(s, ["#1a0505", "#3d0b0b", "#6e1414", "#a5281b", "#d9471f", "#ff8c1a", "#ffd34d", "#4a2c3a"]);
+      withPalette(s, "nether");
     },
     "games",
   ),
@@ -164,7 +153,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.dither.algorithm = "bayer8";
       s.adjust.contrast = 10;
       s.palette.distance = "luma";
-      withColors(s, ["#0d0b14", "#2a1f3d", "#4b3a6b", "#7b5fa8", "#c9c7a0", "#efeec8"]);
+      withPalette(s, "the-end");
     },
     "games",
   ),
@@ -176,10 +165,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.dither.algorithm = "bayer4";
       s.dither.strength = 0.5;
       s.palette.distance = "redmean";
-      withColors(s, [
-        "#000000", "#fcfcfc", "#bcbcbc", "#7c7c7c", "#a80020", "#f83800", "#fca044", "#f8b800",
-        "#00a800", "#58d854", "#0058f8", "#3cbcfc", "#6844fc", "#d800cc", "#a4e4fc", "#503000",
-      ]);
+      withPalette(s, "nes16");
     },
     "games",
   ),
@@ -202,7 +188,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.resize = { ...s.resize, mode: "width", width: 480 };
       s.dither.algorithm = "halftone";
       s.adjust.contrast = 10;
-      withColors(s, ["#f2ede0", "#ff48b0", "#0078bf", "#1a1a1a"]);
+      withPalette(s, "risograph");
     },
     "print",
   ),
@@ -214,7 +200,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.dither.algorithm = "atkinson";
       s.adjust.saturation = -100;
       s.palette.distance = "luma";
-      withColors(s, ["#0b2545", "#13315c", "#1d4e89", "#8da9c4", "#eef4ed"]);
+      withPalette(s, "cyanotype");
     },
     "print",
   ),
@@ -226,7 +212,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.dither.algorithm = "blue-noise";
       s.adjust.contrast = -10;
       s.adjust.gamma = 1.1;
-      withColors(s, ["#2b2118", "#6b4f3a", "#b08968", "#e6ccb2", "#f5ebe0"]);
+      withPalette(s, "polaroid");
     },
     "print",
   ),
@@ -254,7 +240,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.adjust.saturation = -100;
       s.adjust.contrast = 20;
       s.palette.distance = "luma";
-      withColors(s, ["#000000", "#1b0c41", "#4a0c6b", "#a52c60", "#ed6925", "#fbb61a", "#fcffa4"]);
+      withPalette(s, "thermal");
     },
     "wild",
   ),
@@ -266,7 +252,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.dither.algorithm = "halftone";
       s.adjust.saturation = 40;
       s.palette.distance = "redmean";
-      withColors(s, ["#1a1033", "#ff71ce", "#01cdfe", "#05ffa1", "#b967ff", "#fffb96"]);
+      withPalette(s, "vaporwave");
     },
     "wild",
   ),
@@ -290,7 +276,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.adjust.saturation = -100;
       s.adjust.contrast = 30;
       s.palette.distance = "luma";
-      withColors(s, ["#000000", "#003b00", "#008f11", "#00ff41"]);
+      withPalette(s, "matrix");
     },
     "wild",
   ),
@@ -302,7 +288,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.dither.algorithm = "lines-d";
       s.adjust.invert = true;
       s.adjust.contrast = 40;
-      withColors(s, ["#0b3d91", "#e8f1ff"]);
+      withPalette(s, "blueprint");
     },
     "wild",
   ),
@@ -319,7 +305,7 @@ export const BUILTIN_PRESETS: Preset[] = [
         { x: 180, y: 235 },
         { x: 255, y: 255 },
       ];
-      withColors(s, ["#050505", "#39ff14"]);
+      withPalette(s, "radioactive");
     },
     "wild",
   ),
@@ -490,6 +476,25 @@ export const BUILTIN_PRESETS: Preset[] = [
     "fx",
   ),
   builtIn(
+    "signal-lines",
+    "Signal Lines",
+    (s) => {
+      s.resize = { ...s.resize, mode: "width", width: 400 };
+      s.dither.algorithm = "bayer2";
+      s.dither.strength = 0.5;
+      s.adjust.saturation = -100;
+      s.adjust.brightness = -5;
+      s.adjust.contrast = 40;
+      s.palette.distance = "luma";
+      withPalette(s, "matrix");
+      withFilters(s, [
+        ["modulation", { spacing: 8, modulation: 4, thickness: 20, fill: 100, lift: 60, smooth: 1.5 }],
+        ["glow", { threshold: 180, radius: 4, strength: 0.8 }],
+      ]);
+    },
+    "fx",
+  ),
+  builtIn(
     "comic-sticker",
     "Comic Sticker",
     (s) => {
@@ -497,7 +502,7 @@ export const BUILTIN_PRESETS: Preset[] = [
       s.resize = { ...s.resize, mode: "width", width: 360 };
       s.dither.algorithm = "halftone";
       s.adjust.contrast = 15;
-      withColors(s, ["#1b1b1b", "#f7f1e3", "#ffd23f", "#ee4266", "#3bceac", "#0e79b2"]);
+      withPalette(s, "comic");
       withFilters(s, [["edges", { amount: 85, mode: 0 }]]);
       s.background = {
         ...s.background,

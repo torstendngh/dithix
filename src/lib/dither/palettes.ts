@@ -1,7 +1,7 @@
 import { rgbToHex } from "./color";
 import type { PixelBuffer, RGB } from "./types";
 
-export type PaletteGroup = "basic" | "pixel-art" | "hardware";
+export type PaletteGroup = "basic" | "pixel-art" | "hardware" | "themes";
 
 export interface PalettePreset {
   id: string;
@@ -14,6 +14,7 @@ export const PALETTE_GROUPS: { id: PaletteGroup; label: string }[] = [
   { id: "basic", label: "Basics" },
   { id: "pixel-art", label: "Pixel art" },
   { id: "hardware", label: "Retro hardware" },
+  { id: "themes", label: "Themes" },
 ];
 
 const grayscale = (n: number): string[] =>
@@ -435,6 +436,39 @@ export const PALETTE_PRESETS: PalettePreset[] = [
       "#828282", "#ff0000", "#00ff00", "#ffff00", "#0000ff", "#ff00ff", "#00ffff", "#ffffff",
     ],
   },
+
+  // ── Themes: the palettes behind the built-in presets ──────────────────────
+  {
+    id: "overworld",
+    name: "Overworld",
+    group: "themes",
+    colors: [
+      "#1b1b1b", "#3c3c3c", "#6f6f6f", "#a0a0a0", "#d0d0d0",
+      "#4a3220", "#7a5332", "#a67c52",
+      "#2f5a1a", "#4e8a2a", "#7cbd3f",
+      "#2a4d8f", "#4f7fd6", "#9cc7ff",
+    ],
+  },
+  { id: "nether", name: "Nether", group: "themes", colors: ["#1a0505", "#3d0b0b", "#6e1414", "#a5281b", "#d9471f", "#ff8c1a", "#ffd34d", "#4a2c3a"] },
+  { id: "the-end", name: "The End", group: "themes", colors: ["#0d0b14", "#2a1f3d", "#4b3a6b", "#7b5fa8", "#c9c7a0", "#efeec8"] },
+  {
+    id: "nes16",
+    name: "NES 16",
+    group: "themes",
+    colors: [
+      "#000000", "#fcfcfc", "#bcbcbc", "#7c7c7c", "#a80020", "#f83800", "#fca044", "#f8b800",
+      "#00a800", "#58d854", "#0058f8", "#3cbcfc", "#6844fc", "#d800cc", "#a4e4fc", "#503000",
+    ],
+  },
+  { id: "risograph", name: "Risograph", group: "themes", colors: ["#f2ede0", "#ff48b0", "#0078bf", "#1a1a1a"] },
+  { id: "cyanotype", name: "Cyanotype", group: "themes", colors: ["#0b2545", "#13315c", "#1d4e89", "#8da9c4", "#eef4ed"] },
+  { id: "polaroid", name: "Polaroid", group: "themes", colors: ["#2b2118", "#6b4f3a", "#b08968", "#e6ccb2", "#f5ebe0"] },
+  { id: "thermal", name: "Thermal", group: "themes", colors: ["#000000", "#1b0c41", "#4a0c6b", "#a52c60", "#ed6925", "#fbb61a", "#fcffa4"] },
+  { id: "vaporwave", name: "Vaporwave", group: "themes", colors: ["#1a1033", "#ff71ce", "#01cdfe", "#05ffa1", "#b967ff", "#fffb96"] },
+  { id: "matrix", name: "Matrix", group: "themes", colors: ["#000000", "#003b00", "#008f11", "#00ff41"] },
+  { id: "blueprint", name: "Blueprint", group: "themes", colors: ["#0b3d91", "#e8f1ff"] },
+  { id: "radioactive", name: "Radioactive", group: "themes", colors: ["#050505", "#39ff14"] },
+  { id: "comic", name: "Comic", group: "themes", colors: ["#1b1b1b", "#f7f1e3", "#ffd23f", "#ee4266", "#3bceac", "#0e79b2"] },
 ];
 
 export function getPalettePreset(id: string | null): PalettePreset | undefined {

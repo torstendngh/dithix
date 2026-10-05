@@ -30,6 +30,14 @@ describe("built-in presets", () => {
     expect(BUILTIN_PRESETS.filter((p) => p.group === "wild").length).toBeGreaterThanOrEqual(6);
   });
 
+  it("all use a named palette you can also pick in the Palette panel", () => {
+    for (const p of BUILTIN_PRESETS) {
+      const palette = getPalettePreset(p.settings.palette.presetId);
+      expect(palette, `${p.name} palette`).toBeDefined();
+      expect(p.settings.palette.colors, p.name).toEqual(palette!.colors);
+    }
+  });
+
   it("only switch on the glitch gradient in Glitch & FX", () => {
     for (const p of BUILTIN_PRESETS) {
       if (p.group !== "fx") expect(gradientFromFilters(p.settings.filters), p.name).toBeNull();
@@ -82,7 +90,7 @@ describe("official dithix preset", () => {
     // Added after the export; neutral so the look is unchanged.
     filters: [],
     background: {
-      enabled: false, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8,
+      enabled: false, padding: 0, mode: "solid", colorA: "#111111", colorB: "#8a8a8a", size: 8,
       // Bayer 4×4 at 50% is a checkerboard.
       pattern: { size: 4, cells: "1010010110100101", scale: 1 },
     },

@@ -79,6 +79,7 @@ export function settingsAtFrame(settings: DitherSettings, i: number, n: number):
     if (!m.animateFilters) continue;
     switch (f.type) {
       case "wave":
+      case "modulation":
         p.phase = wrapRange(p.phase + 360 * t, 0, 360);
         break;
       case "rgb-split":

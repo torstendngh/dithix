@@ -55,8 +55,18 @@ export function BackgroundPanel() {
       }
     >
       <p className="text-2xs leading-relaxed text-zinc-600">
-        Fills transparent areas before dithering, so the fill comes out in your palette.
+        Fills transparent areas and the margin before dithering, so the fill comes out in your palette.
       </p>
+      {/* Margin works with the fill off too (it then stays transparent). */}
+      <SliderField
+        label="Margin"
+        value={bg.padding}
+        onChange={(padding) => setBackground({ padding: Math.round(padding) })}
+        min={0}
+        max={128}
+        defaultValue={0}
+        unit="px"
+      />
       <div className={cn("grid gap-3", off && "pointer-events-none opacity-40")} aria-disabled={off}>
         <div className="grid grid-cols-4 gap-1" role="group" aria-label="Background fill">
           {BACKGROUND_MODES.map((m) => (

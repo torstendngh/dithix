@@ -1,10 +1,14 @@
 "use client";
 
-import { computeOutputSize, MAX_DIMENSION } from "@/lib/dither/resize";
+import { PixelIcon } from "@/components/icons/pixel-icon";
+import { Button } from "@/components/shared/button";
+import { isFullCrop } from "@/lib/crop-math";
+import { frameLayout } from "@/lib/dither/frame";
+import { MAX_DIMENSION } from "@/lib/dither/resize";
 import type { ResizeMode } from "@/lib/dither/types";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { FieldRow, NumberInput, Segmented, SliderField } from "../fields";
+import { FieldRow, IconButton, NumberInput, Segmented, SliderField } from "../fields";
 import { Section } from "../section";
 
 const MODES: { value: ResizeMode; label: string; title: string }[] = [
@@ -19,8 +23,12 @@ export function ResolutionPanel() {
   const resize = useSettingsStore((s) => s.settings.resize);
   const setResize = useSettingsStore((s) => s.setResize);
   const source = useWorkspaceStore((s) => s.source);
-  const out = source ? computeOutputSize(source.width, source.height, resize) : null;
-  const pixelSize = source && out ? source.width / out.width : null;
+  const crop = useWorkspaceStore((s) => s.crop);
+  const padding = useSettingsStore((s) => s.settings.background.padding);
+  const { setCropping, clearCrop } = useWorkspaceStore.getState();
+  const layout = source ? frameLayout(source.width, source.height, resize, crop, padding) : null;
+  const pixelSize = layout ? layout.region.width / layout.inner.width : null;
+  const cropped = !isFullCrop(crop);
 
   return (
     <Section id="resolution" title="Resolution" icon="resize">
@@ -81,6 +89,21 @@ export function ResolutionPanel() {
         </>
       )}
 
+      <FieldRow label="Crop">
+        <div className="flex items-center gap-1">
+          {layout && cropped && (
+            <span className="mr-1 text-2xs text-zinc-500 tabular-nums">
+              {layout.region.width}×{layout.region.height}
+            </span>
+          )}
+          <Button variant="outline" size="xs" disabled={!source} onClick={() => setCropping(true)}>
+            <PixelIcon name="crop" scale={1} />
+            {cropped ? "Edit" : "Crop"}
+          </Button>
+          {cropped && <IconButton icon="reset" label="Remove crop" size="icon-xs" onClick={clearCrop} />}
+        </div>
+      </FieldRow>
+
       <FieldRow label="Filter">
         <Segmented
           aria-label="Resize filter"
@@ -98,7 +121,8 @@ export function ResolutionPanel() {
       <div className="flex justify-between border border-dashed border-zinc-800 px-2 py-1.5 text-2xs text-zinc-500 tabular-nums">
         <span>output</span>
         <span className="text-zinc-300">
-          {out ? `${out.width} × ${out.height}` : "—"}
+          {layout ? `${layout.width} × ${layout.height}` : "—"}
+          {layout && layout.padding > 0 && <span className="text-zinc-600"> · {layout.padding}px margin</span>}
           {pixelSize && pixelSize > 1 && <span className="text-zinc-600"> · {pixelSize.toFixed(1)}px/dot</span>}
         </span>
       </div>

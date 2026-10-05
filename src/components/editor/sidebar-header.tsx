@@ -65,7 +65,7 @@ export function SidebarHeader() {
             <kbd className="ml-1 font-mono text-2xs opacity-50">⌘O</kbd>
           </Button>
           <IconButton
-            icon="gear"
+            icon="adjust"
             label="Settings"
             variant="outline"
             size="icon"

@@ -15,6 +15,7 @@ import { ResolutionPanel } from "./panels/resolution-panel";
 import { SidebarHeader } from "./sidebar-header";
 import { useDitherProcessor } from "./use-dither-processor";
 import { Viewport } from "./viewport";
+import { CropDialog } from "./crop-dialog";
 import { SettingsDialog } from "./settings-dialog";
 import { WelcomeDialog } from "./welcome-dialog";
 
@@ -37,7 +38,8 @@ function useShortcuts() {
         void exportResult();
         return;
       }
-      if (mod || e.altKey || isTyping(e.target)) return;
+      // The crop dialog has its own keys.
+      if (mod || e.altKey || isTyping(e.target) || ws().cropping) return;
       if (e.code === "Space" && !e.repeat) {
         e.preventDefault();
         ws().setCompare(true);
@@ -45,6 +47,7 @@ function useShortcuts() {
       else if (e.key === "1") ws().zoomTo(1);
       else if (e.key === "+" || e.key === "=") ws().stepZoom(1);
       else if (e.key === "-") ws().stepZoom(-1);
+      else if (e.key.toLowerCase() === "c") ws().setCropping(true);
     };
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code === "Space") ws().setCompare(false);
@@ -92,6 +95,7 @@ export default function Editor() {
       </aside>
       <WelcomeDialog />
       <SettingsDialog />
+      <CropDialog />
     </div>
   );
 }

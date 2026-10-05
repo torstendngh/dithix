@@ -42,7 +42,7 @@ export function useDitherProcessor() {
         if (!source) return;
         const current = useSettingsStore.getState().settings;
         workspace().resetFrames(frameCount(current.motion));
-        post({ type: "animate", animId, sourceId: source.id, settings: current });
+        post({ type: "animate", animId, sourceId: source.id, settings: current, crop: workspace().crop });
       }, ANIMATION_DELAY);
     };
 
@@ -61,6 +61,7 @@ export function useDitherProcessor() {
         jobId: inFlight.jobId,
         sourceId: source.id,
         settings: useSettingsStore.getState().settings,
+        crop: workspace().crop,
       });
     };
 
@@ -107,7 +108,14 @@ export function useDitherProcessor() {
     };
 
     sendSource(workspace().source);
-    const unsubSource = useWorkspaceStore.subscribe((s) => sendSource(s.source));
+    const unsubSource = useWorkspaceStore.subscribe((s, prev) => {
+      sendSource(s.source);
+      // Re-render when the crop changes on the same image (a new image re-renders anyway).
+      if (s.crop !== prev.crop && s.source === prev.source) {
+        run();
+        restartAnimation();
+      }
+    });
     const unsubSettings = useSettingsStore.subscribe((s, prev) => {
       if (s.settings === prev.settings) return;
       run();

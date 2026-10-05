@@ -177,11 +177,16 @@ export function resample(
  * Resize with the browser's own `drawImage` (default smoothing). Pass an ImageBitmap or image:
  * Chrome filters canvas sources differently, so those would not match other web tools.
  */
-export function resampleCanvas(src: ImageBitmap, width: number, height: number): PixelBuffer {
+export function resampleCanvas(
+  src: ImageBitmap,
+  width: number,
+  height: number,
+  region: { x: number; y: number; width: number; height: number } = { x: 0, y: 0, width: src.width, height: src.height },
+): PixelBuffer {
   const to = new OffscreenCanvas(width, height);
   // No willReadFrequently: it forces a software canvas whose filtering differs from the default.
   const ctx = to.getContext("2d")!;
-  ctx.drawImage(src, 0, 0, width, height);
+  ctx.drawImage(src, region.x, region.y, region.width, region.height, 0, 0, width, height);
   const { data } = ctx.getImageData(0, 0, width, height);
   return { width, height, data };
 }

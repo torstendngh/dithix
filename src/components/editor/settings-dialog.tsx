@@ -40,7 +40,7 @@ const TABS: { id: Tab; label: string; icon: IconName; title: string; description
   {
     id: "interface",
     label: "Interface",
-    icon: "gear",
+    icon: "adjust",
     title: "Interface",
     description: "How the sidebar looks and behaves.",
   },
