@@ -656,11 +656,8 @@ export function tvGlitch(src: PixelBuffer, p: Record<string, number>, ctx: Filte
       alphaRow[x] = d[o + 3];
     }
 
-    // Static: snow everywhere, much more inside the band, and white dropout streaks.
+    // Static: snow everywhere, much more inside the band.
     const snow = noise * 90 + inBand * 160;
-    const dropout = hashNoise(line, 4, seed) < noise * 0.04 + inBand * 0.25;
-    const dropStart = hashNoise(line, 5, seed) * w;
-    const dropLen = (0.05 + hashNoise(line, 6, seed) * 0.4) * w;
 
     for (let x = 0; x < w; x++) {
       // Colour is lower resolution than brightness: average it over the bleed and lag it behind.
@@ -682,7 +679,6 @@ export function tvGlitch(src: PixelBuffer, p: Record<string, number>, ctx: Filte
       }
       let l = lumaRow[x];
       if (snow > 0) l += (hashNoise(Math.floor(x / s), line, seed + 17) - 0.5) * snow;
-      if (dropout && x >= dropStart && x < dropStart + dropLen) l = 235 + hashNoise(x, line, seed + 3) * 20;
       const o = (y * w + x) * 4;
       // Back from YUV-ish: r = l + v, b = l + u, g from the luma weights.
       const r = l + v;

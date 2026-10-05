@@ -213,24 +213,55 @@ function KeyLastChange({ t }: { t: number }) {
   );
 }
 
-/** The timeline while it is off: a floating island in the viewport that turns it on. */
+const ISLAND = "flex h-[30px] shrink-0 items-center border border-zinc-800 bg-zinc-950/90 backdrop-blur";
+
+/**
+ * The timeline while it is off: floating islands in the viewport, play/pause (and render
+ * progress) whenever Motion still makes a loop, and one that turns the timeline on.
+ */
 export function TimelineIsland() {
   const hasImage = useWorkspaceStore((s) => s.source !== null);
   const on = useSettingsStore((s) => s.settings.motion.keyframes);
+  const motion = useSettingsStore((s) => s.settings.motion.enabled);
   const tracks = useSettingsStore((s) => s.settings.motion.tracks.length);
   const setMotion = useSettingsStore((s) => s.setMotion);
+  const playing = useWorkspaceStore((s) => s.playing);
+  const setPlaying = useWorkspaceStore((s) => s.setPlaying);
+  const done = useWorkspaceStore((s) => s.frames.length);
+  const total = useWorkspaceStore((s) => s.frameTotal);
   if (!hasImage || on) return null;
+  const rendering = total > 0 && done < total;
   return (
-    <button
-      type="button"
-      onClick={() => setMotion({ keyframes: true })}
-      title="Turn on the timeline to animate with keyframes"
-      className="flex h-[30px] shrink-0 items-center gap-2 border border-zinc-800 bg-zinc-950/90 px-2.5 text-2xs text-zinc-400 backdrop-blur outline-none hover:border-zinc-600 hover:text-zinc-100 focus-visible:ring-1 focus-visible:ring-ring"
-    >
-      <PixelIcon name="keyframe" scale={1} className="text-amber-300" />
-      Timeline
-      {tracks > 0 && <span className="text-zinc-600 tabular-nums">{tracks}</span>}
-    </button>
+    <>
+      {motion && (
+        <div className={ISLAND}>
+          <IconButton
+            icon={playing ? "pause" : "play"}
+            label={playing ? "Pause animation" : "Play animation"}
+            aria-pressed={playing}
+            onClick={() => setPlaying(!playing)}
+          />
+          {rendering && (
+            <span className="pr-1.5 text-2xs text-zinc-500 tabular-nums" title="Rendering animation frames">
+              {done}/{total}
+            </span>
+          )}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => setMotion({ keyframes: true })}
+        title="Turn on the timeline to animate with keyframes"
+        className={cn(
+          ISLAND,
+          "gap-2 px-2.5 text-2xs text-zinc-400 outline-none hover:border-zinc-600 hover:text-zinc-100 focus-visible:ring-1 focus-visible:ring-ring",
+        )}
+      >
+        <PixelIcon name="keyframe" scale={1} className="text-amber-300" />
+        Timeline
+        {tracks > 0 && <span className="text-zinc-600 tabular-nums">{tracks}</span>}
+      </button>
+    </>
   );
 }
 

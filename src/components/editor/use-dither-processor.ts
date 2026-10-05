@@ -131,10 +131,17 @@ export function useDitherProcessor() {
       if (s.playhead !== prev.playhead && (s.frameTotal === 0 || s.frames.length < s.frameTotal)) run();
     });
     let lastKey = renderKey(useSettingsStore.getState().settings);
+    let motionOn = useSettingsStore.getState().settings.motion.enabled;
     const unsubSettings = useSettingsStore.subscribe(() => {
       // Read the store rather than the arguments: listeners can be handed a stale state when
       // another listener updates the store (keyframe sync does).
-      const key = renderKey(useSettingsStore.getState().settings);
+      const { settings } = useSettingsStore.getState();
+      // Switching motion on starts playback (once the loop has rendered).
+      if (settings.motion.enabled !== motionOn) {
+        motionOn = settings.motion.enabled;
+        if (motionOn) workspace().setPlaying(true);
+      }
+      const key = renderKey(settings);
       if (key === lastKey) return;
       lastKey = key;
       run();
