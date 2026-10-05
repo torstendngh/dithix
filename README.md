@@ -20,7 +20,18 @@ Turn any image into dithered pixel art, right in the browser — still or as a l
 
 ## Privacy
 
-Images are processed locally in a Web Worker and never uploaded. Settings, presets, palettes and recent colours live in your browser's `localStorage` (`dithix:settings`, `dithix:presets`, `dithix:palettes`, `dithix:ui`).
+Images are processed locally in a Web Worker and never uploaded, unless you publish a result to the gallery (then only the dithered 1× PNG or GIF and its settings are sent; never the original). Settings, presets, palettes and recent colours live in your browser's `localStorage` (`dithix:settings`, `dithix:presets`, `dithix:palettes`, `dithix:ui`).
+
+## Gallery
+
+Users can publish the current result (a 1× PNG, or a GIF of the loop) with a title, their name and the look's settings. Posts stay hidden until approved on `/admin`; anyone can then use a post's look or save it as a preset.
+
+Setup on Vercel:
+
+1. **Storage → Marketplace → Neon**: connect a Postgres database to the project (sets `DATABASE_URL`). The table is created on first use; posts and their images (small 1× files) are both stored there.
+2. Add `GALLERY_ADMIN_TOKEN`: a long random secret (at least 16 characters, e.g. `openssl rand -hex 32`). Sign in with it on `/admin` to approve, reject or take down posts.
+
+For local development, `vercel env pull .env.local` copies the variables down.
 
 ## Development
 

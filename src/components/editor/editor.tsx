@@ -23,6 +23,7 @@ import { Viewport } from "./viewport";
 import { CropDialog } from "./crop-dialog";
 import { SettingsDialog } from "./settings-dialog";
 import { WelcomeDialog } from "./welcome-dialog";
+import { PublishDialog } from "./publish-dialog";
 
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
@@ -119,6 +120,7 @@ export default function Editor() {
       <WelcomeDialog />
       <SettingsDialog />
       <CropDialog />
+      <PublishDialog />
     </div>
   );
 }

@@ -609,7 +609,15 @@ export function SettingsDialog() {
         {/* Rail: brand header + tabs. Becomes a top bar on narrow screens. */}
         <nav className="flex shrink-0 flex-col border-b border-zinc-800 bg-zinc-950 sm:w-48 sm:border-r sm:border-b-0" aria-label="Settings sections">
           <div className="relative hidden h-24 overflow-hidden border-b border-zinc-800 sm:block">
-            <Image src="/bg.png" alt="" fill sizes="192px" className="object-cover brightness-[0.4] saturate-[0.9]" draggable={false} />
+            <Image
+              src="/bg-art.png"
+              alt=""
+              fill
+              // Art resolution, one art pixel per CSS pixel (cropped, never scaled), aimed past the empty centre.
+              unoptimized
+              className="object-none object-[50%_80%] brightness-[0.4] saturate-[0.9] [image-rendering:pixelated]"
+              draggable={false}
+            />
             <div className="absolute inset-0 bg-linear-to-b from-transparent to-zinc-950/90" />
             <Image
               src="/mascot-2.gif"

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { PixelIcon, type IconName } from "@/components/icons/pixel-icon";
 import { Button } from "@/components/shared/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/shared/dialog";
@@ -17,7 +18,7 @@ const POINTS: { icon: IconName; title: string; body: React.ReactNode }[] = [
   {
     icon: "eye",
     title: "Stays on your device",
-    body: "Images are processed right here in your browser and are never uploaded. No account needed.",
+    body: "Images are processed right here in your browser and are never uploaded, unless you choose to publish a result to the gallery. No account needed.",
   },
   {
     icon: "save",
@@ -43,6 +44,7 @@ const SHORTCUTS = [
 export function WelcomeDialog() {
   const open = useUiStore((s) => s.welcomeOpen);
   const closeWelcome = useUiStore((s) => s.closeWelcome);
+  const router = useRouter();
   const hasImage = useWorkspaceStore((s) => s.source !== null);
 
   return (
@@ -50,12 +52,13 @@ export function WelcomeDialog() {
       <DialogContent className="max-w-md">
         <div className="relative h-40 overflow-hidden border-b border-zinc-800">
           <Image
-            src="/bg.png"
+            src="/bg-art.png"
             alt=""
             fill
-            sizes="(max-width: 480px) 100vw, 448px"
+            // Art resolution, one art pixel per CSS pixel (cropped, never scaled), aimed past the empty centre.
+            unoptimized
             preload
-            className="object-cover brightness-[0.45] saturate-[0.9]"
+            className="object-none object-[50%_80%] brightness-[0.45] saturate-[0.9] [image-rendering:pixelated]"
             draggable={false}
           />
           {/* Fade into the dialog body so the header doesn't end on a hard edge. */}
@@ -119,6 +122,18 @@ export function WelcomeDialog() {
               </Button>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              closeWelcome();
+              router.push("/gallery");
+            }}
+            className="flex items-center gap-2 justify-self-start text-zinc-400 underline-offset-4 outline-none hover:text-zinc-100 hover:underline focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <PixelIcon name="gallery" scale={1} />
+            See what others made in the gallery →
+          </button>
         </div>
       </DialogContent>
     </Dialog>

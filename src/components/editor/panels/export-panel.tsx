@@ -9,6 +9,7 @@ import { ANIMATED_FORMATS, maxExportScale } from "@/lib/image-io";
 import { videoScale } from "@/lib/video";
 import { cn } from "@/lib/tailwind-utils";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useUiStore } from "@/stores/ui-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { exportResult } from "../actions";
 import { FieldRow, NumberInput, SliderField } from "../fields";
@@ -137,6 +138,16 @@ export function ExportPanel() {
             {result.width * outScale}×{result.height * outScale}
           </span>
         )}
+      </Button>
+      <Button
+        variant="outline"
+        onClick={() => useUiStore.getState().setPublishOpen(true)}
+        disabled={!result}
+        className="w-full"
+        title="Share the result in the public gallery (reviewed before it appears)"
+      >
+        <PixelIcon name="gallery" />
+        Publish to gallery
       </Button>
     </Section>
   );

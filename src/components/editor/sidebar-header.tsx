@@ -19,13 +19,15 @@ export function SidebarHeader() {
         <h1 className="relative isolate flex justify-center overflow-hidden px-3 pt-4 pb-1">
           {/* Decorative backdrop: covers the header, dimmed so the logo reads, fading out at the bottom. */}
           <Image
-            src="/bg.png"
+            src="/bg-art.png"
             alt=""
             aria-hidden
             fill
-            sizes="320px"
+            // The backdrop at its art resolution (512×288), one art pixel per CSS pixel like the
+            // logo, cropped rather than scaled. Its centre is an empty void, so aim lower.
+            unoptimized
             preload
-            className="pointer-events-none -z-10 object-cover select-none mask-b-from-0% opacity-50"
+            className="pointer-events-none -z-10 object-none object-[50%_80%] select-none mask-b-from-0% opacity-50 [image-rendering:pixelated]"
             draggable={false}
           />
           <Image

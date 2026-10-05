@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PixelIcon } from "@/components/icons/pixel-icon";
 import { Button } from "@/components/shared/button";
@@ -284,6 +285,15 @@ export function Viewport() {
       {source && !result && (
         <p className="pointer-events-none absolute inset-0 grid place-items-center text-zinc-500">processing…</p>
       )}
+
+      {/* The way into the gallery; client-side, so the open image survives the trip. */}
+      <Link
+        href="/gallery"
+        className="absolute top-3 right-3 flex h-[30px] items-center gap-2 border border-zinc-800 bg-zinc-950/90 px-2.5 text-2xs tracking-wide text-zinc-300 uppercase backdrop-blur outline-none hover:border-zinc-600 hover:text-zinc-50 focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <PixelIcon name="gallery" scale={1} />
+        Gallery
+      </Link>
 
       {/* Bottom-left islands; kept clear of the zoom controls on the right. */}
       <div className="absolute bottom-3 left-3 flex max-w-[calc(100%-18rem)] min-w-0 items-center gap-2">

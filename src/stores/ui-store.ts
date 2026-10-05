@@ -15,6 +15,12 @@ interface UiState {
   /** Settings dialog (backup, import, storage); not persisted. */
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
+  /** Publish-to-gallery dialog; not persisted. */
+  publishOpen: boolean;
+  setPublishOpen: (open: boolean) => void;
+  /** Name last used to publish, prefilled next time. */
+  galleryAuthor: string;
+  setGalleryAuthor: (name: string) => void;
   /** Colours picked in the colour picker, newest first. */
   recentColors: string[];
   addRecentColor: (hex: string) => void;
@@ -47,6 +53,16 @@ export const useUiStore = create<UiState>()(
       setSettingsOpen: (open) =>
         set((s) => {
           s.settingsOpen = open;
+        }),
+      publishOpen: false,
+      setPublishOpen: (open) =>
+        set((s) => {
+          s.publishOpen = open;
+        }),
+      galleryAuthor: "",
+      setGalleryAuthor: (name) =>
+        set((s) => {
+          s.galleryAuthor = name;
         }),
       recentColors: [],
       addRecentColor: (hex) =>
@@ -82,6 +98,7 @@ export const useUiStore = create<UiState>()(
         recentColors: s.recentColors,
         showLogo: s.showLogo,
         multiSections: s.multiSections,
+        galleryAuthor: s.galleryAuthor,
       }),
       // Returning visitors start with the dialog closed.
       merge: (persisted, current) => {
@@ -92,7 +109,8 @@ export const useUiStore = create<UiState>()(
           : [];
         const showLogo = p?.showLogo !== false;
         const multiSections = p?.multiSections === true;
-        return { ...current, onboarded, welcomeOpen: !onboarded, recentColors, showLogo, multiSections };
+        const galleryAuthor = typeof p?.galleryAuthor === "string" ? p.galleryAuthor.slice(0, 64) : "";
+        return { ...current, onboarded, welcomeOpen: !onboarded, recentColors, showLogo, multiSections, galleryAuthor };
       },
     },
   ),

@@ -366,6 +366,27 @@ export const ICONS = {
     "........",
   ],
   // Film strip: sprocket holes either side of a frame.
+  // The editor: a canvas with the settings sidebar beside it.
+  editor: [
+    "########",
+    "#....#.#",
+    "#....###",
+    "#....#.#",
+    "#....###",
+    "#....#.#",
+    "#....#.#",
+    "########",
+  ],
+  // The gallery: a wall of framed pieces.
+  gallery: [
+    "###.###",
+    "#.#.#.#",
+    "###.###",
+    ".......",
+    "###.###",
+    "#.#.#.#",
+    "###.###",
+  ],
   keyframe: [
     "...#...",
     "..###..",
